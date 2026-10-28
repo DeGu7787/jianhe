@@ -1,0 +1,31 @@
+name: jianhe_desktop
+description: 笺盒 Windows 桌面客户端。
+publish_to: none
+version: 0.1.10+11
+
+environment:
+  sdk: ^3.12.2
+
+resolution: workspace
+
+dependencies:
+  flutter:
+    sdk: flutter
+  cupertino_icons: ^1.0.8
+  jianhe_core: ^0.1.0
+  jianhe_skill_io: ^0.1.0
+  jianhe_storage: ^0.1.0
+  flutter_secure_storage: ^11.0.0
+  http: ^1.6.0
+  crypto: ^3.0.7
+
+dev_dependencies:
+  flutter_test:
+    sdk: flutter
+  flutter_lints: ^6.0.0
+  fake_async: ^1.3.1
+
+flutter:
+  uses-material-design: true
+  assets:
+    - assets/brand/main_ball.png

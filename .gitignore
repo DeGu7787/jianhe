@@ -1,0 +1,45 @@
+# Local toolchains
+.tooling/
+.tmp/
+
+# Dart and Flutter
+.dart_tool/
+.packages
+.pub/
+build/
+**/.dart_tool/
+**/.flutter-plugins
+**/.flutter-plugins-dependencies
+**/build/
+
+# Editors and operating systems
+.idea/
+.vscode/
+*.iml
+.DS_Store
+Thumbs.db
+*.log
+
+# Local agent tool config
+.claude/settings.local.json
+.claude/worktrees/
+.zcode/
+
+# Generated local data
+*.db
+*.db-shm
+*.db-wal
+coverage/
+
+# Flutter Windows generated engine files
+**/ephemeral/
+
+# Built installer output
+**/dist/
+apps/desktop/landing/downloads/
+
+# Local debug scratch and runtime trace files
+.scratch/
+.scrash/
+jianhe_dart_log.txt
+jianhe_orbit_log.txt

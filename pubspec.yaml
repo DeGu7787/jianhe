@@ -1,0 +1,18 @@
+name: jianhe_workspace
+description: 笺盒 monorepo workspace.
+publish_to: none
+
+environment:
+  sdk: ^3.12.2
+
+workspace:
+  - apps/desktop
+  - apps/cli
+  - packages/jianhe_core
+  - packages/jianhe_skill_io
+  - packages/jianhe_storage
+
+# path_provider_android 2.3.x moved to JNI. Its native hook is currently
+# emitted into Windows builds even though this product only targets Windows.
+dependency_overrides:
+  path_provider_android: 2.2.23

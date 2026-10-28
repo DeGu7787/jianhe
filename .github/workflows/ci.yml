@@ -1,0 +1,37 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+jobs:
+  test:
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: subosito/flutter-action@v2
+        with:
+          channel: stable
+          flutter-version: 3.44.9
+          cache: true
+      - name: Install dependencies
+        run: flutter pub get
+      - name: Test jianhe_core
+        working-directory: packages/jianhe_core
+        run: dart test
+      - name: Test jianhe_skill_io
+        working-directory: packages/jianhe_skill_io
+        run: dart test
+      - name: Test jianhe_storage
+        working-directory: packages/jianhe_storage
+        run: dart test
+      - name: Test CLI
+        working-directory: apps/cli
+        run: dart test
+      - name: Analyze desktop
+        working-directory: apps/desktop
+        run: flutter analyze
+      - name: Test desktop
+        working-directory: apps/desktop
+        run: flutter test

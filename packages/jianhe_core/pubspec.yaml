@@ -1,0 +1,17 @@
+name: jianhe_core
+description: 笺盒共享的领域模型、查询接口与拼装引擎。
+version: 0.1.0
+
+environment:
+  sdk: ^3.12.2
+
+resolution: workspace
+
+# Add regular dependencies here.
+dependencies:
+  crypto: ^3.0.7
+  uuid: ^4.6.0
+
+dev_dependencies:
+  lints: ^6.0.0
+  test: ^1.25.6

@@ -1,0 +1,18 @@
+name: jianhe_skill_io
+description: 笺盒完整 Skill 包的本地导入、校验与导出实现。
+version: 0.1.0
+
+environment:
+  sdk: ^3.12.2
+
+resolution: workspace
+
+dependencies:
+  archive: ^3.6.1
+  jianhe_core: ^0.1.0
+  path: ^1.9.1
+  yaml: ^3.1.3
+
+dev_dependencies:
+  lints: ^6.0.0
+  test: ^1.25.6

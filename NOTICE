@@ -1,0 +1,19 @@
+笺盒 (JianHe)
+Copyright 2026 芜湖鸠江区德谷科技坊（个体工商户）
+(English: Wuhu Jiujiang Degu Technology Studio)
+
+本产品包含由芜湖鸠江区德谷科技坊开发的软件，以 Apache License 2.0 授权。
+This product includes software developed by 芜湖鸠江区德谷科技坊,
+licensed under the Apache License, Version 2.0.
+
+“笺盒”“JianHe”名称及悬浮球 Logo 是本项目的商标，不在 Apache License 2.0
+的授权范围内，使用规则见 TRADEMARK.md。
+The names "笺盒" and "JianHe" and the floating-ball logo are trademarks of
+this project and are not licensed under the Apache License 2.0; see
+TRADEMARK.md.
+
+第三方组件 / Third-party components:
+
+- apps/desktop/installer/translations/ChineseSimplified.isl
+  Inno Setup 简体中文翻译，Copyright (c) 2019 - 2020 kirakira，MIT License。
+  许可证全文见同目录下的 ChineseSimplified.LICENSE。
