@@ -135,7 +135,44 @@ class SkillPackageIo {
       );
     }
     await output.parent.create(recursive: true);
-    await output.writeAsBytes(encoded, flush: true);
+    // Write next to the target and rename, so an interrupted export never
+    // leaves a truncated ZIP under the name the user chose.
+    final temporary = File(
+      '${output.path}.${DateTime.now().microsecondsSinceEpoch}.tmp',
+    );
+    try {
+      await temporary.writeAsBytes(encoded, flush: true);
+      await temporary.rename(output.path);
+    } on Object {
+      try {
+        if (temporary.existsSync()) temporary.deleteSync();
+      } on FileSystemException {
+        // Best effort only; the original error matters more.
+      }
+      rethrow;
+    }
+  }
+
+  static final _unsafeFileNameCharacters = RegExp(r'[\\/:*?"<>|\x00-\x1F]');
+  static final _reservedWindowsNames = RegExp(
+    r'^(con|prn|aux|nul|com[0-9]|lpt[0-9])$',
+    caseSensitive: false,
+  );
+
+  /// Default file name for exporting [title] as a ZIP, safe on Windows:
+  /// reserved characters become `_`, trailing dots and spaces are dropped,
+  /// reserved device names are prefixed, and the name is length-limited.
+  static String suggestedZipFileName(String title) {
+    var name = title
+        .replaceAll(_unsafeFileNameCharacters, '_')
+        .trim()
+        .replaceAll(RegExp(r'[. ]+$'), '');
+    if (name.isEmpty) name = 'skill';
+    if (_reservedWindowsNames.hasMatch(name.split('.').first)) {
+      name = '_$name';
+    }
+    if (name.length > 120) name = name.substring(0, 120).trimRight();
+    return '$name.zip';
   }
 
   Future<ImportedSkillPackage> _importFile(File file) async {

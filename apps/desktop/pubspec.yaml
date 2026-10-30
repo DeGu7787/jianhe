@@ -1,7 +1,7 @@
 name: jianhe_desktop
 description: 笺盒 Windows 桌面客户端。
 publish_to: none
-version: 0.1.10+11
+version: 0.1.12+13
 
 environment:
   sdk: ^3.12.2

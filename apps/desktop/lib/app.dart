@@ -12,6 +12,7 @@ import 'l10n/app_strings.dart';
 import 'platform/backup_file_service.dart';
 import 'platform/ball_window_controller.dart';
 import 'platform/global_hot_key.dart';
+import 'platform/skill_export_service.dart';
 import 'platform/skill_import_service.dart';
 
 class JianheApp extends StatefulWidget {
@@ -38,6 +39,7 @@ class JianheApp extends StatefulWidget {
     this.initialPinnedCategories = const {},
     this.onPinnedCategoryChanged,
     this.skillImportService = const NativeSkillImportService(),
+    this.skillExportService = const NativeSkillExportService(),
     this.backupFileService = const BackupFileService(),
     this.accountController,
     this.syncController,
@@ -80,6 +82,7 @@ class JianheApp extends StatefulWidget {
   /// Fired when a category is pinned or unpinned for a material type.
   final void Function(ItemType type, String? category)? onPinnedCategoryChanged;
   final SkillImportService skillImportService;
+  final SkillExportService skillExportService;
   final BackupFileService backupFileService;
   final AccountSessionController? accountController;
   final SyncController? syncController;
@@ -175,6 +178,7 @@ class _JianheAppState extends State<JianheApp> {
           initialPinnedCategories: widget.initialPinnedCategories,
           onPinnedCategoryChanged: widget.onPinnedCategoryChanged,
           skillImportService: widget.skillImportService,
+          skillExportService: widget.skillExportService,
           backupFileService: widget.backupFileService,
           accountController: widget.accountController,
           syncController: widget.syncController,

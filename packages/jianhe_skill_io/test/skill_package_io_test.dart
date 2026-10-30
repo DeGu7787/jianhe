@@ -163,6 +163,67 @@ void main() {
     expect(imported.entrypointContent, '# Stored\n\nBody.');
     expect(imported.files.single.relativePath, 'data.bin');
   });
+
+  test('an exported zip imports back with the same files', () async {
+    final skill = JianheItem.create(
+      type: ItemType.skill,
+      title: 'Round Trip',
+      content: '---\nname: Round Trip\n---\n\nBody.',
+    );
+    final package = ImportedSkillPackage(
+      title: skill.title,
+      entrypointContent: skill.content,
+      sourceFormat: SkillSourceFormat.directory,
+      files: <SkillFile>[
+        SkillFile(
+          relativePath: 'references/guide.md',
+          mediaType: 'text/markdown',
+          content: Uint8List.fromList(utf8.encode('# Guide')),
+        ),
+      ],
+    ).toPackage(skill.id);
+    final output = p.join(temporary.path, 'out', 'round-trip.zip');
+
+    await io.exportZip(skill: skill, package: package, outputPath: output);
+    final reimported = await io.importPath(output);
+    expect(reimported.title, 'Round Trip');
+    expect(reimported.entrypointContent, skill.content);
+    expect(reimported.files.single.relativePath, 'references/guide.md');
+    expect(utf8.decode(reimported.files.single.content), '# Guide');
+
+    await expectLater(
+      io.exportZip(skill: skill, package: null, outputPath: output),
+      throwsA(isA<SkillPackageFormatException>()),
+    );
+    await io.exportZip(
+      skill: skill,
+      package: null,
+      outputPath: output,
+      force: true,
+    );
+    // The overwrite goes through a temporary file that must not linger.
+    expect(
+      Directory(p.dirname(output)).listSync().map((e) => p.basename(e.path)),
+      <String>['round-trip.zip'],
+    );
+    expect((await io.importPath(output)).files, isEmpty);
+  });
+
+  test('suggests zip file names that are valid on Windows', () {
+    expect(
+      SkillPackageIo.suggestedZipFileName('My: Skill/v2?'),
+      'My_ Skill_v2_.zip',
+    );
+    expect(SkillPackageIo.suggestedZipFileName('  notes.  '), 'notes.zip');
+    expect(SkillPackageIo.suggestedZipFileName('CON'), '_CON.zip');
+    expect(SkillPackageIo.suggestedZipFileName('lpt1.txt'), '_lpt1.txt.zip');
+    expect(SkillPackageIo.suggestedZipFileName(' . '), 'skill.zip');
+    expect(SkillPackageIo.suggestedZipFileName('写作助手'), '写作助手.zip');
+    expect(
+      SkillPackageIo.suggestedZipFileName('a' * 300),
+      '${'a' * 120}.zip',
+    );
+  });
 }
 
 /// Rewrites the uncompressed-size fields of every entry, as an attacker

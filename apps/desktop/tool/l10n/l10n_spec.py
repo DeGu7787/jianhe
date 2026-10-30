@@ -126,6 +126,15 @@ g('skillPickerUnavailable', "'系统 Skill 选择窗口无法打开。'",
   "\"The system skill picker couldn't be opened.\"")
 g('skillImportUnsupported', "'当前平台不支持导入本地 Skill 包。'",
   "\"Importing local skill packages isn't supported on this platform.\"")
+g('exportSkillZip', "'导出 ZIP'", "'Export ZIP'")
+g('skillExportDialogTitle', "'导出 Skill 到本地'", "'Export skill to this PC'")
+g('skillZipDialogFilter', "'ZIP 包 (*.zip)|*.zip'", "'ZIP archive (*.zip)|*.zip'")
+g('skillZipZenityFilter', "'ZIP 包 | *.zip'", "'ZIP archive | *.zip'")
+f('noticeSkillExported', 'String path', "'已导出到 $path'", "'Exported to $path'")
+g('noticeSkillExportFailed', "'Skill 导出失败，请换个位置后重试'",
+  "\"Couldn't export the skill. Try another location\"")
+g('skillExportUnsupported', "'当前平台不支持导出 Skill 包。'",
+  "\"Exporting skill packages isn't supported on this platform.\"")
 
 section('Saving and deleting items')
 g('noticeCannotSaveNoDatabase', "'本地数据库不可用，暂时无法保存'",

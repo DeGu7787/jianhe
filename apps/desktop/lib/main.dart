@@ -102,7 +102,7 @@ const _apiBaseUrl = String.fromEnvironment(
 );
 const _appVersion = String.fromEnvironment(
   'JIANHE_APP_VERSION',
-  defaultValue: '0.1.10',
+  defaultValue: '0.1.12',
 );
 const _cloudPortalUrl = String.fromEnvironment(
   'JIANHE_CLOUD_PORTAL_URL',

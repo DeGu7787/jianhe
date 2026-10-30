@@ -2,7 +2,7 @@
 
 笺盒的源代码以 [Apache License 2.0](LICENSE) 开源，你可以自由使用、修改和分发。
 但**代码的开源授权不包括品牌**：“笺盒”“JianHe”名称和悬浮球 Logo
-（`apps/desktop/assets/brand/` 下的图形）归芜湖鸠江区德谷科技坊（个体工商户）所有。
+（`apps/desktop/assets/brand/` 下的图形）归芜湖鸠江区德谷科技坊所有。
 
 ## 可以做的
 

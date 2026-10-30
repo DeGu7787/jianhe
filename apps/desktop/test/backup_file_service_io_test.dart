@@ -2,13 +2,59 @@ import 'dart:io';
 
 import 'package:flutter_test/flutter_test.dart';
 import 'package:jianhe_desktop/platform/backup_file_service_io.dart';
+import 'package:jianhe_desktop/platform/windows_dialog_powershell.dart';
+
+import 'fake_dialog_process_runner.dart';
 
 void main() {
-  test('escapes values embedded in a PowerShell single-quoted string', () {
-    expect(
-      escapePowerShellSingleQuotedString("title'; Start-Process calc; '"),
-      "title''; Start-Process calc; ''",
-    );
+  group('Windows dialogs', () {
+    test('Save As passes title, filter and file name as data', () async {
+      final runner = FakeDialogProcessRunner(stdout: 'C:\\b\\x.jianhe');
+      final service = BackupFileService(runProcess: runner.call);
+
+      final path = await service.runWindowsDialog(
+        save: true,
+        suggestedName: hostileDialogText,
+        dialogTitle: 'Save backup',
+        filter: 'JianHe (*.jianhe)|*.jianhe',
+      );
+
+      expect(path, 'C:\\b\\x.jianhe');
+      final call = runner.calls.single;
+      expect(call.script, windowsBackupSaveDialogScript);
+      expect(call.arguments.join('\n'), isNot(contains('Set-Content')));
+      expect(call.environment, <String, String>{
+        dialogTitleVariable: 'Save backup',
+        dialogFilterVariable: 'JianHe (*.jianhe)|*.jianhe',
+        dialogFileNameVariable: hostileDialogText,
+      });
+    });
+
+    test('Open uses the localized defaults and no file name', () async {
+      final runner = FakeDialogProcessRunner();
+      final service = BackupFileService(runProcess: runner.call);
+
+      expect(await service.runWindowsDialog(save: false), isNull);
+
+      final call = runner.calls.single;
+      expect(call.script, windowsBackupOpenDialogScript);
+      expect(call.environment?.keys, <String>[
+        dialogTitleVariable,
+        dialogFilterVariable,
+      ]);
+      expect(call.environment?[dialogTitleVariable], isNotEmpty);
+    });
+
+    test('reports a dialog PowerShell cannot show', () async {
+      final service = BackupFileService(
+        runProcess: FakeDialogProcessRunner(exitCode: 1).call,
+      );
+
+      await expectLater(
+        service.runWindowsDialog(save: false),
+        throwsA(isA<FileSystemException>()),
+      );
+    });
   });
 
   test('escapes values embedded in an AppleScript string', () {

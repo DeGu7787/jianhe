@@ -1,7 +1,7 @@
 param(
   [string]$ApiBaseUrl = 'https://jianhe.neodaas.com',
   # Keep in step with pubspec.yaml, the installer and the landing page.
-  [string]$AppVersion = '0.1.10'
+  [string]$AppVersion = '0.1.12'
 )
 
 $ErrorActionPreference = 'Stop'

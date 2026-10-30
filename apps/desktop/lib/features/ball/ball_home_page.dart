@@ -13,6 +13,7 @@ import '../../platform/ball_window_controller.dart';
 import '../../platform/backup_file_service.dart';
 import '../../platform/cli_executable_path.dart';
 import '../../platform/global_hot_key.dart';
+import '../../platform/skill_export_service.dart';
 import '../../platform/skill_import_service.dart';
 import '../../platform/external_url_launcher.dart';
 import '../account/account_panel.dart';
@@ -116,6 +117,7 @@ class BallHomePage extends StatefulWidget {
     this.initialPinnedCategories = const {},
     this.onPinnedCategoryChanged,
     this.skillImportService = const NativeSkillImportService(),
+    this.skillExportService = const NativeSkillExportService(),
     this.backupFileService = const BackupFileService(),
     this.accountController,
     this.syncController,
@@ -158,6 +160,7 @@ class BallHomePage extends StatefulWidget {
   /// Fired when a category is pinned or unpinned for a material type.
   final void Function(ItemType type, String? category)? onPinnedCategoryChanged;
   final SkillImportService skillImportService;
+  final SkillExportService skillExportService;
   final BackupFileService backupFileService;
   final AccountSessionController? accountController;
   final SyncController? syncController;
@@ -354,6 +357,7 @@ class _BallHomePageState extends State<BallHomePage>
   bool _loading = true;
   bool _backupBusy = false;
   bool _skillImportBusy = false;
+  bool _skillExportBusy = false;
   late final AccountSessionController _accountController;
   late final bool _ownsAccountController;
   late final FeedbackController? _feedbackController;
@@ -1787,6 +1791,36 @@ class _BallHomePageState extends State<BallHomePage>
       return;
     }
     await _importSkill(directory: action == _SkillCreateAction.directory);
+  }
+
+  Future<void> _exportSkill(JianheItem item) async {
+    if (_skillExportBusy) return;
+    _beginPopupMenuInteraction();
+    setState(() => _skillExportBusy = true);
+    try {
+      // Read the stored rows fresh: the list copy may predate an edit made
+      // in another window, by the CLI, or by a sync pull.
+      final skill = await widget.repository?.getById(item.id) ?? item;
+      final package = await widget.skillPackages?.getBySkillId(item.id);
+      final path = await widget.skillExportService.exportZip(
+        skill: skill,
+        package: package,
+      );
+      if (path == null || !mounted) return;
+      _showNotice(
+        _s.noticeSkillExported(path),
+        success: true,
+        duration: const Duration(seconds: 4),
+      );
+    } on SkillExportException catch (error) {
+      if (mounted) _showNotice(error.message);
+    } on Object catch (error, stackTrace) {
+      debugPrint('Skill export failed: $error\n$stackTrace');
+      if (mounted) _showNotice(_s.noticeSkillExportFailed);
+    } finally {
+      _endPopupMenuInteraction();
+      if (mounted) setState(() => _skillExportBusy = false);
+    }
   }
 
   Future<void> _importSkill({required bool directory}) async {
@@ -3765,6 +3799,7 @@ class _BallHomePageState extends State<BallHomePage>
     required String subtitle,
     VoidCallback? onBack,
     int subtitleMaxLines = 1,
+    List<Widget> actions = const <Widget>[],
   }) {
     final isLeft = _dockEdge == BallDockEdge.left;
     return Container(
@@ -3822,6 +3857,7 @@ class _BallHomePageState extends State<BallHomePage>
               ],
             ),
           ),
+          ...actions,
           IconButton(
             tooltip: _s.collapsePanel,
             onPressed: () => _go(_BallView.collapsed),
@@ -4216,6 +4252,9 @@ class _BallHomePageState extends State<BallHomePage>
                       onRating: (rating) => _setRating(item, rating),
                       onEdit: () => _editItem(item),
                       onDelete: () => _deleteItem(item),
+                      onExport: item.type == ItemType.skill
+                          ? () => unawaited(_exportSkill(item))
+                          : null,
                       onMoveUp: canReorder && index > 0
                           ? () => _moveItem(item, -1)
                           : null,
@@ -4312,6 +4351,17 @@ class _BallHomePageState extends State<BallHomePage>
           title: item.title,
           subtitle: _s.skillDetailSubtitle,
           onBack: () => _go(_browserViewFor(item.type)),
+          actions: <Widget>[
+            IconButton(
+              key: const Key('skill-detail-export'),
+              tooltip: _s.exportSkillZip,
+              visualDensity: VisualDensity.compact,
+              onPressed: _skillExportBusy
+                  ? null
+                  : () => unawaited(_exportSkill(item)),
+              icon: const Icon(Icons.download_rounded),
+            ),
+          ],
         ),
         Expanded(
           child: SkillPackageBrowser(
@@ -5720,6 +5770,7 @@ class _MaterialSlip extends StatefulWidget {
     this.secondaryActionNotice,
     this.onMoveUp,
     this.onMoveDown,
+    this.onExport,
   });
 
   final JianheItem item;
@@ -5735,6 +5786,7 @@ class _MaterialSlip extends StatefulWidget {
   final String? secondaryActionNotice;
   final VoidCallback? onMoveUp;
   final VoidCallback? onMoveDown;
+  final VoidCallback? onExport;
 
   @override
   State<_MaterialSlip> createState() => _MaterialSlipState();
@@ -5931,6 +5983,8 @@ class _MaterialSlipState extends State<_MaterialSlip> {
                       widget.onMoveUp?.call();
                     case 'down':
                       widget.onMoveDown?.call();
+                    case 'export':
+                      widget.onExport?.call();
                     case 'delete':
                       widget.onDelete();
                   }
@@ -5947,6 +6001,17 @@ class _MaterialSlipState extends State<_MaterialSlip> {
                       style: const TextStyle(fontSize: 13),
                     ),
                   ),
+                  if (widget.onExport != null)
+                    PopupMenuItem(
+                      key: Key('skill-export-${widget.item.id}'),
+                      value: 'export',
+                      height: 36,
+                      padding: const EdgeInsets.symmetric(horizontal: 12),
+                      child: Text(
+                        AppStrings.of(context).exportSkillZip,
+                        style: const TextStyle(fontSize: 13),
+                      ),
+                    ),
                   if (widget.onMoveUp != null)
                     PopupMenuItem(
                       value: 'up',

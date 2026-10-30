@@ -125,6 +125,13 @@ abstract class AppStrings {
   String get skillFileZenityFilter;
   String get skillPickerUnavailable;
   String get skillImportUnsupported;
+  String get exportSkillZip;
+  String get skillExportDialogTitle;
+  String get skillZipDialogFilter;
+  String get skillZipZenityFilter;
+  String noticeSkillExported(String path);
+  String get noticeSkillExportFailed;
+  String get skillExportUnsupported;
 
   // Saving and deleting items
   String get noticeCannotSaveNoDatabase;

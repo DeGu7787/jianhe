@@ -182,6 +182,20 @@ class ZhStrings extends AppStrings {
   String get skillPickerUnavailable => '系统 Skill 选择窗口无法打开。';
   @override
   String get skillImportUnsupported => '当前平台不支持导入本地 Skill 包。';
+  @override
+  String get exportSkillZip => '导出 ZIP';
+  @override
+  String get skillExportDialogTitle => '导出 Skill 到本地';
+  @override
+  String get skillZipDialogFilter => 'ZIP 包 (*.zip)|*.zip';
+  @override
+  String get skillZipZenityFilter => 'ZIP 包 | *.zip';
+  @override
+  String noticeSkillExported(String path) => '已导出到 $path';
+  @override
+  String get noticeSkillExportFailed => 'Skill 导出失败，请换个位置后重试';
+  @override
+  String get skillExportUnsupported => '当前平台不支持导出 Skill 包。';
 
   // Saving and deleting items
   @override

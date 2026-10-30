@@ -4,7 +4,7 @@
 
 #define MyAppName "笺盒"
 #define MyAppNameEnglish "JianHe"
-#define MyAppVersion "0.1.10"
+#define MyAppVersion "0.1.12"
 #define MyAppPublisher "JianHe"
 #define MyAppExeName "jianhe_desktop.exe"
 #define MyAppId "DAA27BA4-A41E-4F82-9935-9F137FFA5469"

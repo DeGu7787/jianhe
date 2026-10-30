@@ -10,6 +10,7 @@ import 'package:jianhe_desktop/platform/backup_file_service.dart';
 import 'package:jianhe_desktop/platform/ball_window_controller.dart';
 import 'package:jianhe_desktop/platform/global_hot_key.dart';
 import 'package:jianhe_core/jianhe_core.dart';
+import 'package:jianhe_desktop/platform/skill_export_service.dart';
 import 'package:jianhe_desktop/platform/skill_import_service.dart';
 import 'package:jianhe_skill_io/jianhe_skill_io.dart';
 import 'package:jianhe_storage/jianhe_storage.dart';
@@ -108,6 +109,22 @@ class _FakeSkillImportService implements SkillImportService {
   Future<ImportedSkillPackage?> importDirectory() async {
     directoryCalls++;
     return directory;
+  }
+}
+
+class _FakeSkillExportService implements SkillExportService {
+  _FakeSkillExportService({this.path});
+
+  final String? path;
+  final exported = <(JianheItem, SkillPackage?)>[];
+
+  @override
+  Future<String?> exportZip({
+    required JianheItem skill,
+    required SkillPackage? package,
+  }) async {
+    exported.add((skill, package));
+    return path;
   }
 }
 
@@ -1279,6 +1296,74 @@ void main() {
       expect(find.text('已经导入过：CLI 抢先导入'), findsOneWidget);
     },
   );
+
+  testWidgets('exports a Skill package as a ZIP from the list and detail', (
+    tester,
+  ) async {
+    useDesktopSurface(tester, physicalSize: const Size(470, 610));
+    final storage = JianheStorageDatabase.inMemory();
+    addTearDown(storage.close);
+    final skill = JianheItem.create(
+      type: ItemType.skill,
+      title: '导出用 Skill',
+      content: '# Export me',
+    );
+    final imported = ImportedSkillPackage(
+      title: skill.title,
+      entrypointContent: skill.content,
+      sourceFormat: SkillSourceFormat.directory,
+      files: <SkillFile>[
+        SkillFile(
+          relativePath: 'references/guide.md',
+          mediaType: 'text/markdown',
+          content: Uint8List.fromList('# Guide'.codeUnits),
+        ),
+      ],
+    );
+    await storage.skills.replaceSkill(skill, imported.toPackage(skill.id));
+    final exportService = _FakeSkillExportService(
+      path: r'C:\Users\me\Downloads\导出用 Skill.zip',
+    );
+
+    await tester.pumpWidget(
+      JianheApp(
+        repository: storage.items,
+        skillPackages: storage.skills,
+        skillExportService: exportService,
+      ),
+    );
+    await tester.pumpAndSettle();
+    await tester.tap(find.bySemanticsLabel('笺盒悬浮球'));
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('Skills'));
+    await tester.pumpAndSettle();
+
+    await tester.tap(find.byTooltip('更多操作'));
+    await tester.pumpAndSettle();
+    expect(find.text('导出 ZIP'), findsOneWidget);
+    await tester.tap(find.text('导出 ZIP'));
+    await tester.pumpAndSettle();
+
+    expect(exportService.exported, hasLength(1));
+    final (exportedSkill, exportedPackage) = exportService.exported.single;
+    expect(exportedSkill.id, skill.id);
+    expect(exportedSkill.content, '# Export me');
+    expect(
+      exportedPackage?.files.map((file) => file.relativePath),
+      <String>['references/guide.md'],
+    );
+    expect(
+      find.text('✓  已导出到 C:\\Users\\me\\Downloads\\导出用 Skill.zip'),
+      findsOneWidget,
+    );
+
+    await tester.tap(find.byKey(Key('material-action-${skill.id}')));
+    await tester.pumpAndSettle();
+    await tester.tap(find.byKey(const Key('skill-detail-export')));
+    await tester.pumpAndSettle();
+    expect(exportService.exported, hasLength(2));
+    expect(exportService.exported.last.$1.id, skill.id);
+  });
 
   testWidgets('imports a complete Skill package from the Skills browser', (
     tester,

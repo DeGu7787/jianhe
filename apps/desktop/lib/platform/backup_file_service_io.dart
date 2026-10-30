@@ -1,11 +1,32 @@
 import 'dart:convert';
 import 'dart:io';
 
-import '../l10n/app_strings.dart';
+import 'package:flutter/foundation.dart' show visibleForTesting;
 
-String escapePowerShellSingleQuotedString(String value) {
-  return value.replaceAll("'", "''");
-}
+import '../l10n/app_strings.dart';
+import 'windows_dialog_powershell.dart';
+
+/// Windows Save As dialog for backups and other exported files; its text
+/// comes from the environment (see windows_dialog_powershell.dart).
+const windowsBackupSaveDialogScript = r'''
+[Console]::OutputEncoding = New-Object System.Text.UTF8Encoding($false)
+Add-Type -AssemblyName PresentationFramework
+$dialog = New-Object Microsoft.Win32.SaveFileDialog
+$dialog.Title = $env:JIANHE_DIALOG_TITLE
+$dialog.Filter = $env:JIANHE_DIALOG_FILTER
+$dialog.FileName = $env:JIANHE_DIALOG_FILE_NAME
+if ($dialog.ShowDialog()) { [Console]::Write($dialog.FileName) }
+''';
+
+/// Windows Open dialog for backups.
+const windowsBackupOpenDialogScript = r'''
+[Console]::OutputEncoding = New-Object System.Text.UTF8Encoding($false)
+Add-Type -AssemblyName PresentationFramework
+$dialog = New-Object Microsoft.Win32.OpenFileDialog
+$dialog.Title = $env:JIANHE_DIALOG_TITLE
+$dialog.Filter = $env:JIANHE_DIALOG_FILTER
+if ($dialog.ShowDialog()) { [Console]::Write($dialog.FileName) }
+''';
 
 /// Writes [content] to [target] via a same-directory temp file and an
 /// atomic rename, so a crash mid-write can never leave the user's backup
@@ -35,7 +56,10 @@ String escapeAppleScriptString(String value) {
 }
 
 class BackupFileService {
-  const BackupFileService();
+  const BackupFileService({this.runProcess = Process.run});
+
+  /// Runs the dialog subprocesses; tests pass a fake.
+  final DialogProcessRunner runProcess;
 
   static const maximumBackupBytes = 100 * 1024 * 1024;
 
@@ -81,7 +105,7 @@ class BackupFileService {
     required String filter,
   }) {
     if (Platform.isWindows) {
-      return _runWindowsDialog(
+      return runWindowsDialog(
         save: true,
         suggestedName: suggestedName,
         dialogTitle: dialogTitle,
@@ -105,7 +129,7 @@ class BackupFileService {
 
   Future<String?> _chooseOpenPath() {
     if (Platform.isWindows) {
-      return _runWindowsDialog(save: false);
+      return runWindowsDialog(save: false);
     }
     if (Platform.isMacOS) {
       return _runMacDialog(save: false);
@@ -113,43 +137,31 @@ class BackupFileService {
     return _runLinuxDialog(save: false);
   }
 
-  Future<String?> _runWindowsDialog({
+  /// Shows the Windows Save As ([save]) or Open dialog and returns the
+  /// chosen path, or null when the user cancelled.
+  @visibleForTesting
+  Future<String?> runWindowsDialog({
     required bool save,
     String? suggestedName,
     String? dialogTitle,
     String? filter,
-  }) async {
+  }) {
     final strings = AppStrings.current;
-    final escapedName = escapePowerShellSingleQuotedString(suggestedName ?? '');
-    final escapedTitle = escapePowerShellSingleQuotedString(
-      dialogTitle ??
-          (save ? strings.backupSaveDialogTitle : strings.backupOpenDialogTitle),
+    final defaultTitle = save
+        ? strings.backupSaveDialogTitle
+        : strings.backupOpenDialogTitle;
+    return runPowerShellDialog(
+      runProcess: runProcess,
+      script: save
+          ? windowsBackupSaveDialogScript
+          : windowsBackupOpenDialogScript,
+      environment: <String, String>{
+        dialogTitleVariable: dialogTitle ?? defaultTitle,
+        dialogFilterVariable: filter ?? strings.backupDialogFilter,
+        if (save) dialogFileNameVariable: suggestedName ?? '',
+      },
+      unavailableMessage: strings.fileDialogUnavailable,
     );
-    final escapedFilter = escapePowerShellSingleQuotedString(
-      filter ?? strings.backupDialogFilter,
-    );
-    final dialogType = save ? 'SaveFileDialog' : 'OpenFileDialog';
-    final script =
-        '''
-[Console]::OutputEncoding = New-Object System.Text.UTF8Encoding(\$false)
-Add-Type -AssemblyName PresentationFramework
-\$dialog = New-Object Microsoft.Win32.$dialogType
-\$dialog.Title = '$escapedTitle'
-\$dialog.Filter = '$escapedFilter'
-${save ? "\$dialog.FileName = '$escapedName'" : ''}
-if (\$dialog.ShowDialog()) { [Console]::Write(\$dialog.FileName) }
-''';
-    final result = await Process.run('powershell.exe', <String>[
-      '-NoProfile',
-      '-STA',
-      '-Command',
-      script,
-    ], stdoutEncoding: utf8);
-    if (result.exitCode != 0) {
-      throw FileSystemException(strings.fileDialogUnavailable);
-    }
-    final path = (result.stdout as String).trim();
-    return path.isEmpty ? null : path;
   }
 
   Future<String?> _runMacDialog({

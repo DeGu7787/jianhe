@@ -33,7 +33,7 @@ class JianheCliRunner {
        _environment = environment ?? Platform.environment,
        _workingDirectory = workingDirectory ?? Directory.current.path;
 
-  static const version = '0.1.10';
+  static const version = '0.1.12';
 
   final void Function(String value) _out;
   final void Function(String value) _error;

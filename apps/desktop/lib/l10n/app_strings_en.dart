@@ -205,6 +205,22 @@ class EnStrings extends AppStrings {
   @override
   String get skillImportUnsupported =>
       "Importing local skill packages isn't supported on this platform.";
+  @override
+  String get exportSkillZip => 'Export ZIP';
+  @override
+  String get skillExportDialogTitle => 'Export skill to this PC';
+  @override
+  String get skillZipDialogFilter => 'ZIP archive (*.zip)|*.zip';
+  @override
+  String get skillZipZenityFilter => 'ZIP archive | *.zip';
+  @override
+  String noticeSkillExported(String path) => 'Exported to $path';
+  @override
+  String get noticeSkillExportFailed =>
+      "Couldn't export the skill. Try another location";
+  @override
+  String get skillExportUnsupported =>
+      "Exporting skill packages isn't supported on this platform.";
 
   // Saving and deleting items
   @override

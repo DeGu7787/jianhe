@@ -1,6 +1,6 @@
 name: jianhe_cli
 description: 笺盒的本地读写命令行接口。
-version: 0.1.10
+version: 0.1.12
 
 environment:
   sdk: ^3.12.2
