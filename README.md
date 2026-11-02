@@ -81,7 +81,7 @@ docs/
 ## 许可证
 
 本仓库的代码以 [Apache License 2.0](LICENSE) 授权，
-Copyright 2026 芜湖鸠江区德谷科技坊。
+Copyright 2026 德谷科技坊。
 
 “笺盒”“JianHe”名称与 Logo 不在开源授权范围内，fork 后对外发布请更换名称与图标，
 详见 [TRADEMARK.md](TRADEMARK.md)。
