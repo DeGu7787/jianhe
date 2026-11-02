@@ -1183,6 +1183,8 @@ class ZhStrings extends AppStrings {
   @override
   String get portalRecentFirst => '按最近更新';
   @override
+  String get portalRatingFirst => '按星级从高到低';
+  @override
   String get portalNoContent => '（无正文）';
   @override
   String get portalEmptyTitle => '没有找到云端内容';

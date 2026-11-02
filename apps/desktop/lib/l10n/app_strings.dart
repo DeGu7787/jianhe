@@ -619,6 +619,7 @@ abstract class AppStrings {
   String portalLibraryCount(int count);
   String portalSearchCount(int count);
   String get portalRecentFirst;
+  String get portalRatingFirst;
   String get portalNoContent;
   String get portalEmptyTitle;
   String get portalEmptyBody;

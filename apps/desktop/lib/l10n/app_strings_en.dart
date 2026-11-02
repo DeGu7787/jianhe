@@ -1358,6 +1358,8 @@ class EnStrings extends AppStrings {
   @override
   String get portalRecentFirst => 'Recently updated';
   @override
+  String get portalRatingFirst => 'Highest rated first';
+  @override
   String get portalNoContent => '(No content)';
   @override
   String get portalEmptyTitle => 'Nothing in the cloud yet';
