@@ -30,6 +30,7 @@ class VipPlan {
     required this.lifetime,
     this.recommended = false,
     this.regularAmount,
+    this.regularAmountCents,
   });
 
   factory VipPlan.fromJson(Map<String, Object?> json) {
@@ -47,6 +48,10 @@ class VipPlan {
       recommended: (json['recommended'] as bool?) ?? false,
       regularAmount: switch (json['regular_amount']) {
         final String value when value.isNotEmpty => value,
+        _ => null,
+      },
+      regularAmountCents: switch (json['regular_amount_cents']) {
+        final int value when value > 0 => value,
         _ => null,
       },
     );
@@ -70,8 +75,29 @@ class VipPlan {
   /// 服务端推荐的套餐：突出显示，并在打开购买页时默认选中。
   final bool recommended;
 
-  /// 早鸟套餐活动结束后的正式价格（不带币种符号）；不是早鸟套餐时为 null。
+  /// 早鸟活动期间的正式价格（不带币种符号）；没有早鸟活动时为 null。
   final String? regularAmount;
+
+  /// 早鸟活动期间的正式价格（分 / 美分）；没有早鸟活动时为 null。
+  final int? regularAmountCents;
+
+  /// 是否正在以早鸟价销售。
+  bool get earlyBird => regularAmount != null;
+
+  /// 早鸟价比正式价便宜的金额，带币种符号且省略整数后的 `.00`，例如 `¥20`；
+  /// 没有早鸟活动时为 null。
+  String? get savings {
+    final regular = regularAmountCents;
+    if (regular == null || regular <= amountCents) return null;
+    return formatVipPrice(currency, _trimCents(regular - amountCents));
+  }
+
+  /// 早鸟价相对正式价的优惠百分比（向下取整，例如 30 表示 7 折）。
+  int? get percentOff {
+    final regular = regularAmountCents;
+    if (regular == null || regular <= amountCents) return null;
+    return ((regular - amountCents) * 100) ~/ regular;
+  }
 
   /// 带币种符号的正式价格，例如 `¥298.00`；不是早鸟套餐时为 null。
   String? get regularPrice =>
@@ -166,6 +192,7 @@ class VipPlanCatalog {
     required this.paymentAvailable,
     this.termsVersion,
     this.termsUrl,
+    this.earlyBirdEndsAt,
   });
 
   factory VipPlanCatalog.fromJson(Map<String, Object?> json) {
@@ -184,6 +211,10 @@ class VipPlanCatalog {
       paymentAvailable: _bool(json, 'payment_available'),
       termsVersion: json['terms_version'] as String?,
       termsUrl: termsUrl is String ? Uri.tryParse(termsUrl) : null,
+      earlyBirdEndsAt: switch (json['early_bird_ends_at']) {
+        final String value => DateTime.tryParse(value),
+        _ => null,
+      },
     );
   }
 
@@ -196,6 +227,9 @@ class VipPlanCatalog {
 
   /// 含 VIP 会员条款的服务条款页面。
   final Uri? termsUrl;
+
+  /// 早鸟活动的结束时刻（不含）；没有早鸟活动或服务端较旧时为 null。
+  final DateTime? earlyBirdEndsAt;
 
   VipMarket? market(String? id) {
     for (final market in markets) {
@@ -372,4 +406,11 @@ DateTime? _dateTime(
   final parsed = DateTime.tryParse(value);
   if (parsed == null) throw FormatException('Invalid $key.');
   return parsed.toUtc();
+}
+
+/// `2000` → `20`，`1999` → `19.99`。
+String _trimCents(int cents) {
+  final whole = cents ~/ 100;
+  final rest = cents % 100;
+  return rest == 0 ? '$whole' : '$whole.${rest.toString().padLeft(2, '0')}';
 }

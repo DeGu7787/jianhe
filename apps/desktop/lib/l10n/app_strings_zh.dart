@@ -779,12 +779,6 @@ class ZhStrings extends AppStrings {
   @override
   String get vipBuyHint => '开通后素材和 Skill 会自动同步到你的其他设备。';
   @override
-  String vipMarketName(String market) => switch (market) {
-    'cn' => '国内 · 人民币',
-    'intl' => '海外 · 美元',
-    _ => market,
-  };
-  @override
   String vipPlanName(String planId, String fallback) => switch (planId) {
     'month' => '月度 VIP',
     'quarter' => '季度 VIP',
@@ -804,9 +798,22 @@ class ZhStrings extends AppStrings {
   @override
   String get vipRecommended => '推荐';
   @override
-  String get vipEarlyBird => '早鸟价';
+  String get vipEarlyBirdTitle => '早鸟优惠';
   @override
-  String vipRegularPrice(String price) => '早鸟活动结束后恢复正式价 $price';
+  String vipEarlyBirdUpTo(int percentOff) =>
+      '低至 ${((100 - percentOff) / 10).toStringAsFixed(1).replaceAll(RegExp(r'\.0$'), '')} 折';
+  @override
+  String vipEarlyBirdEnds(String date) => '限时优惠，截至 $date，之后恢复正式价';
+  @override
+  String get vipRegularPriceLabel => '正式价';
+  @override
+  String vipSave(String amount) => '省 $amount';
+  @override
+  String vipPayAmountEarlyBird(String price) => '去支付 $price（早鸟价）';
+  @override
+  String get vipUseIntlMarket => '不在中国大陆？使用海外支付（美元）';
+  @override
+  String get vipUseCnMarket => '在中国大陆？改用国内支付（人民币）';
   @override
   String get vipPayMethod => '支付方式';
   @override

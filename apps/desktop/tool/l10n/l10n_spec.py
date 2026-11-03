@@ -540,15 +540,6 @@ f('vipRenewHint', 'String date', "'当前 VIP 有效期至 $date，续费时长�
   "'Your VIP is valid until $date. Renewing adds time on top of that.'")
 g('vipBuyHint', "'开通后素材和 Skill 会自动同步到你的其他设备。'",
   "'With VIP, your items and skills sync to your other devices automatically.'")
-f('vipMarketName', 'String market', """switch (market) {
-    'cn' => '国内 · 人民币',
-    'intl' => '海外 · 美元',
-    _ => market,
-  }""", """switch (market) {
-    'cn' => 'Mainland China · CNY',
-    'intl' => 'International · USD',
-    _ => market,
-  }""")
 f('vipPlanName', 'String planId, String fallback', """switch (planId) {
     'month' => '月度 VIP',
     'quarter' => '季度 VIP',
@@ -577,9 +568,16 @@ f('vipPlanDuration', 'int months, bool lifetime', """lifetime
       : '$months months'""")
 f('vipPerMonth', 'String price', "'约 $price/月'", "'about $price/month'")
 g('vipRecommended', "'推荐'", "'Best value'")
-g('vipEarlyBird', "'早鸟价'", "'Early bird'")
-f('vipRegularPrice', 'String price', "'早鸟活动结束后恢复正式价 $price'",
-  "'Regular price $price after the early-bird offer'")
+g('vipEarlyBirdTitle', "'早鸟优惠'", "'Early-bird offer'")
+f('vipEarlyBirdUpTo', 'int percentOff', """'低至 ${((100 - percentOff) / 10).toStringAsFixed(1).replaceAll(RegExp(r'\\.0$'), '')} 折'""",
+  "'Save up to $percentOff%'")
+f('vipEarlyBirdEnds', 'String date', "'限时优惠，截至 $date，之后恢复正式价'",
+  "'Limited time: ends $date, then regular prices apply'")
+g('vipRegularPriceLabel', "'正式价'", "'Regular'")
+f('vipSave', 'String amount', "'省 $amount'", "'Save $amount'")
+f('vipPayAmountEarlyBird', 'String price', "'去支付 $price（早鸟价）'", "'Pay $price (early-bird price)'")
+g('vipUseIntlMarket', "'不在中国大陆？使用海外支付（美元）'", "'Outside mainland China? Pay in USD'")
+g('vipUseCnMarket', "'在中国大陆？改用国内支付（人民币）'", "'In mainland China? Pay in CNY'")
 g('vipPayMethod', "'支付方式'", "'Payment method'")
 g('vipNoRefundNotice', "'VIP 为虚拟服务，支付成功后立即生效，购买后不支持退款。'",
   "'VIP is a digital service that starts as soon as payment succeeds. Purchases are non-refundable.'")

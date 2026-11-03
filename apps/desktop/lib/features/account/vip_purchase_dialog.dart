@@ -41,12 +41,14 @@ class _VipPurchaseDialogState extends State<VipPurchaseDialog> {
   @override
   void initState() {
     super.initState();
-    // 默认选中与界面语言对应的入口，用户可以随时切换。
+    // 英文界面只卖美元（海外入口）；中文界面默认人民币，
+    // 海外华人可以通过页面底部的链接改用美元。
     final english = AppStrings.read(context).language == AppLanguage.en;
     _controller = VipPurchaseController(
       account: widget.account,
       billing: widget.billing,
       preferredMarket: english ? vipMarketIntl : vipMarketCN,
+      lockMarket: english,
       pollInterval: widget.pollInterval,
     )..addListener(_refresh);
     _controller.loadPlans();
@@ -128,6 +130,11 @@ class _VipPurchaseDialogState extends State<VipPurchaseDialog> {
                 child: _buildBody(stage),
               ),
             ),
+            // The panel window is short, so the terms and the pay button stay
+            // pinned below the scrolling plan list.
+            if (stage == VipPurchaseStage.choosingPlan ||
+                stage == VipPurchaseStage.creatingOrder)
+              _buildCheckoutBar(),
           ],
         ),
       ),
@@ -188,30 +195,8 @@ class _VipPurchaseDialogState extends State<VipPurchaseDialog> {
           style: const TextStyle(color: _muted, fontSize: 12),
         ),
         const SizedBox(height: 12),
-        if (catalog.markets.length > 1) ...<Widget>[
-          SegmentedButton<String>(
-            key: const Key('vip-market'),
-            showSelectedIcon: false,
-            segments: <ButtonSegment<String>>[
-              for (final item in catalog.markets)
-                ButtonSegment<String>(
-                  value: item.id,
-                  label: Text(
-                    _s.vipMarketName(item.id),
-                    key: Key('vip-market-${item.id}'),
-                    style: const TextStyle(fontSize: 12),
-                  ),
-                ),
-            ],
-            selected: <String>{if (market != null) market.id},
-            onSelectionChanged: creating
-                ? null
-                : (value) => _controller.selectMarket(value.first),
-            style: SegmentedButton.styleFrom(
-              selectedBackgroundColor: const Color(0xFFFFF4EC),
-              selectedForegroundColor: _accent,
-            ),
-          ),
+        if (_earlyBirdBanner(catalog, market) case final banner?) ...<Widget>[
+          banner,
           const SizedBox(height: 12),
         ],
         for (final plan in market?.plans ?? const <VipPlan>[]) ...<Widget>[
@@ -223,6 +208,27 @@ class _VipPurchaseDialogState extends State<VipPurchaseDialog> {
           ),
           const SizedBox(height: 8),
         ],
+        if (_controller.alternativeMarket case final other?)
+          Align(
+            alignment: Alignment.centerLeft,
+            child: TextButton(
+              key: const Key('vip-market-switch'),
+              onPressed: creating
+                  ? null
+                  : () => _controller.selectMarket(other.id),
+              style: TextButton.styleFrom(
+                foregroundColor: _muted,
+                padding: const EdgeInsets.symmetric(horizontal: 2),
+                minimumSize: const Size(0, 30),
+              ),
+              child: Text(
+                other.id == vipMarketIntl
+                    ? _s.vipUseIntlMarket
+                    : _s.vipUseCnMarket,
+                style: const TextStyle(fontSize: 12),
+              ),
+            ),
+          ),
         if (methods.length > 1) ...<Widget>[
           const SizedBox(height: 4),
           Text(
@@ -254,35 +260,80 @@ class _VipPurchaseDialogState extends State<VipPurchaseDialog> {
           const SizedBox(height: 10),
         ],
         _NoRefundNotice(_s.vipNoRefundNotice),
-        const SizedBox(height: 6),
-        _buildTermsCheckbox(catalog, enabled: !creating),
-        if (_controller.checkoutUnavailableReason case final reason?)
-          _Notice(reason)
-        else if (_controller.message case final message?)
-          _Notice(message),
-        const SizedBox(height: 10),
-        FilledButton(
-          key: const Key('vip-checkout'),
-          onPressed: _controller.canCheckout ? _controller.checkout : null,
-          style: FilledButton.styleFrom(
-            minimumSize: const Size.fromHeight(46),
-            backgroundColor: _accent,
-          ),
-          child: creating
-              ? const SizedBox.square(
-                  dimension: 18,
-                  child: CircularProgressIndicator(
-                    strokeWidth: 2,
-                    color: Colors.white,
-                  ),
-                )
-              : Text(
-                  selected == null
-                      ? _s.vipChoosePlan
-                      : _s.vipPayAmount(selected.price),
-                ),
-        ),
       ],
+    );
+  }
+
+  /// 固定在窗口底部的条款勾选和支付按钮。
+  Widget _buildCheckoutBar() {
+    final catalog = _controller.catalog!;
+    final selected = _controller.selectedPlan;
+    final creating = _controller.stage == VipPurchaseStage.creatingOrder;
+    return DecoratedBox(
+      decoration: const BoxDecoration(
+        color: Colors.white,
+        border: Border(top: BorderSide(color: _border)),
+        borderRadius: BorderRadius.vertical(bottom: Radius.circular(18)),
+      ),
+      child: Padding(
+        padding: const EdgeInsets.fromLTRB(18, 8, 18, 14),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: <Widget>[
+            _buildTermsCheckbox(catalog, enabled: !creating),
+            if (_controller.checkoutUnavailableReason case final reason?)
+              _Notice(reason)
+            else if (_controller.message case final message?)
+              _Notice(message),
+            const SizedBox(height: 8),
+            FilledButton(
+              key: const Key('vip-checkout'),
+              onPressed: _controller.canCheckout ? _controller.checkout : null,
+              style: FilledButton.styleFrom(
+                minimumSize: const Size.fromHeight(46),
+                backgroundColor: _accent,
+              ),
+              child: creating
+                  ? const SizedBox.square(
+                      dimension: 18,
+                      child: CircularProgressIndicator(
+                        strokeWidth: 2,
+                        color: Colors.white,
+                      ),
+                    )
+                  : Text(
+                      selected == null
+                          ? _s.vipChoosePlan
+                          : selected.earlyBird
+                          ? _s.vipPayAmountEarlyBird(selected.price)
+                          : _s.vipPayAmount(selected.price),
+                    ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  /// 早鸟活动横幅：当前入口有早鸟价时显示最高优惠和截止日期。
+  Widget? _earlyBirdBanner(VipPlanCatalog catalog, VipMarket? market) {
+    var percentOff = 0;
+    for (final plan in market?.plans ?? const <VipPlan>[]) {
+      final off = plan.percentOff;
+      if (off != null && off > percentOff) percentOff = off;
+    }
+    if (percentOff <= 0) return null;
+    final endsAt = catalog.earlyBirdEndsAt;
+    // The offer ends at endsAt (exclusive), so its last day is the one
+    // before that instant in the viewer's time zone.
+    final lastDay = endsAt?.subtract(const Duration(seconds: 1));
+    return _EarlyBirdBanner(
+      title: _s.vipEarlyBirdTitle,
+      detail: _s.vipEarlyBirdUpTo(percentOff),
+      deadline: lastDay == null
+          ? null
+          : _s.vipEarlyBirdEnds(_formatDate(lastDay)),
     );
   }
 
@@ -596,6 +647,7 @@ class _PlanTile extends StatelessWidget {
     final duration = s.vipPlanDuration(plan.months, plan.lifetime);
     final monthly = plan.monthlyPrice;
     final regular = plan.regularPrice;
+    final savings = plan.savings;
     return Material(
       color: selected ? const Color(0xFFFFF4EC) : Colors.white,
       shape: RoundedRectangleBorder(
@@ -640,10 +692,6 @@ class _PlanTile extends StatelessWidget {
                             label: s.vipRecommended,
                           ),
                         ],
-                        if (regular != null) ...<Widget>[
-                          const SizedBox(width: 6),
-                          _PlanBadge(label: s.vipEarlyBird),
-                        ],
                       ],
                     ),
                     const SizedBox(height: 2),
@@ -653,25 +701,147 @@ class _PlanTile extends StatelessWidget {
                           : '$duration · ${s.vipPerMonth(monthly)}',
                       style: const TextStyle(color: _muted, fontSize: 11),
                     ),
-                    if (regular != null)
-                      Text(
-                        s.vipRegularPrice(regular),
+                    if (regular != null) ...<Widget>[
+                      const SizedBox(height: 3),
+                      Wrap(
                         key: Key('vip-plan-${plan.id}-regular'),
-                        style: const TextStyle(color: _muted, fontSize: 11),
+                        spacing: 6,
+                        runSpacing: 2,
+                        crossAxisAlignment: WrapCrossAlignment.center,
+                        children: <Widget>[
+                          Text.rich(
+                            TextSpan(
+                              style: const TextStyle(
+                                color: _muted,
+                                fontSize: 11,
+                              ),
+                              children: <InlineSpan>[
+                                TextSpan(text: '${s.vipRegularPriceLabel} '),
+                                TextSpan(
+                                  text: regular,
+                                  style: const TextStyle(
+                                    decoration: TextDecoration.lineThrough,
+                                    decorationColor: _muted,
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ),
+                          if (savings != null)
+                            _SavingsTag(
+                              key: Key('vip-plan-${plan.id}-savings'),
+                              label: s.vipSave(savings),
+                            ),
+                        ],
                       ),
+                    ],
                   ],
                 ),
               ),
+              const SizedBox(width: 8),
               Text(
                 plan.price,
-                style: const TextStyle(
-                  fontSize: 16,
+                style: TextStyle(
+                  fontSize: regular == null ? 16 : 19,
                   fontWeight: FontWeight.w800,
-                  color: _ink,
+                  color: regular == null ? _ink : _accent,
                 ),
               ),
             ],
           ),
+        ),
+      ),
+    );
+  }
+}
+
+/// 早鸟价卡片上的"省 ¥20"。
+class _SavingsTag extends StatelessWidget {
+  const _SavingsTag({super.key, required this.label});
+
+  final String label;
+
+  @override
+  Widget build(BuildContext context) {
+    return DecoratedBox(
+      decoration: BoxDecoration(
+        color: const Color(0xFFE8F3EC),
+        borderRadius: BorderRadius.circular(6),
+      ),
+      child: Padding(
+        padding: const EdgeInsets.symmetric(horizontal: 5, vertical: 1),
+        child: Text(
+          label,
+          style: const TextStyle(
+            color: _green,
+            fontSize: 10,
+            fontWeight: FontWeight.w800,
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+/// 套餐列表上方的早鸟活动横幅。
+class _EarlyBirdBanner extends StatelessWidget {
+  const _EarlyBirdBanner({
+    required this.title,
+    required this.detail,
+    this.deadline,
+  });
+
+  final String title;
+  final String detail;
+  final String? deadline;
+
+  @override
+  Widget build(BuildContext context) {
+    return DecoratedBox(
+      key: const Key('vip-early-bird-banner'),
+      decoration: BoxDecoration(
+        gradient: const LinearGradient(
+          colors: <Color>[Color(0xFFEA6A39), Color(0xFFF2994A)],
+        ),
+        borderRadius: BorderRadius.circular(12),
+      ),
+      child: Padding(
+        padding: const EdgeInsets.fromLTRB(12, 10, 12, 10),
+        child: Row(
+          children: <Widget>[
+            const Icon(
+              Icons.local_offer_rounded,
+              color: Colors.white,
+              size: 22,
+            ),
+            const SizedBox(width: 10),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: <Widget>[
+                  Text(
+                    '$title · $detail',
+                    style: const TextStyle(
+                      color: Colors.white,
+                      fontSize: 14,
+                      fontWeight: FontWeight.w800,
+                    ),
+                  ),
+                  if (deadline case final value?) ...<Widget>[
+                    const SizedBox(height: 2),
+                    Text(
+                      value,
+                      key: const Key('vip-early-bird-deadline'),
+                      style: const TextStyle(
+                        color: Color(0xFFFFF1E6),
+                        fontSize: 11,
+                      ),
+                    ),
+                  ],
+                ],
+              ),
+            ),
+          ],
         ),
       ),
     );

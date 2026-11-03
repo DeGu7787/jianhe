@@ -40,15 +40,21 @@ class VipPurchaseController extends ChangeNotifier {
     required AccountSessionController account,
     required VipBillingRemote billing,
     String? preferredMarket,
+    bool lockMarket = false,
     Duration? pollInterval = const Duration(seconds: 3),
   }) : _account = account,
        _billing = billing,
        _preferredMarket = preferredMarket,
+       _lockMarket = lockMarket,
        _pollInterval = pollInterval;
 
   final AccountSessionController _account;
   final VipBillingRemote _billing;
   final String? _preferredMarket;
+
+  /// 只提供 [_preferredMarket] 这一个入口（英文界面只卖美元）。
+  /// 服务端没有该入口时仍退回第一个可用入口，避免无处可买。
+  final bool _lockMarket;
   final Duration? _pollInterval;
 
   VipPurchaseStage _stage = VipPurchaseStage.loadingPlans;
@@ -74,6 +80,15 @@ class VipPurchaseController extends ChangeNotifier {
 
   /// 当前选中的购买入口。
   VipMarket? get market => _catalog?.market(_marketId);
+
+  /// 可以切换到的另一个购买入口；只有一个入口或入口被锁定时为 null。
+  VipMarket? get alternativeMarket {
+    if (_lockMarket && _catalog?.market(_preferredMarket) != null) return null;
+    for (final candidate in _catalog?.markets ?? const <VipMarket>[]) {
+      if (candidate.id != _marketId) return candidate;
+    }
+    return null;
+  }
 
   VipPlan? get selectedPlan {
     for (final plan in market?.plans ?? const <VipPlan>[]) {
@@ -152,6 +167,11 @@ class VipPurchaseController extends ChangeNotifier {
     if (busy || _stage != VipPurchaseStage.choosingPlan) return;
     final next = _catalog?.market(marketId);
     if (next == null || next.id == _marketId) return;
+    if (_lockMarket &&
+        next.id != _preferredMarket &&
+        _catalog?.market(_preferredMarket) != null) {
+      return;
+    }
     _applyMarket(next);
     _update(clearMessage: true);
   }

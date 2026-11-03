@@ -884,12 +884,6 @@ class EnStrings extends AppStrings {
   String get vipBuyHint =>
       'With VIP, your items and skills sync to your other devices automatically.';
   @override
-  String vipMarketName(String market) => switch (market) {
-    'cn' => 'Mainland China · CNY',
-    'intl' => 'International · USD',
-    _ => market,
-  };
-  @override
   String vipPlanName(String planId, String fallback) => switch (planId) {
     'month' => 'Monthly VIP',
     'quarter' => 'Quarterly VIP',
@@ -913,10 +907,22 @@ class EnStrings extends AppStrings {
   @override
   String get vipRecommended => 'Best value';
   @override
-  String get vipEarlyBird => 'Early bird';
+  String get vipEarlyBirdTitle => 'Early-bird offer';
   @override
-  String vipRegularPrice(String price) =>
-      'Regular price $price after the early-bird offer';
+  String vipEarlyBirdUpTo(int percentOff) => 'Save up to $percentOff%';
+  @override
+  String vipEarlyBirdEnds(String date) =>
+      'Limited time: ends $date, then regular prices apply';
+  @override
+  String get vipRegularPriceLabel => 'Regular';
+  @override
+  String vipSave(String amount) => 'Save $amount';
+  @override
+  String vipPayAmountEarlyBird(String price) => 'Pay $price (early-bird price)';
+  @override
+  String get vipUseIntlMarket => 'Outside mainland China? Pay in USD';
+  @override
+  String get vipUseCnMarket => 'In mainland China? Pay in CNY';
   @override
   String get vipPayMethod => 'Payment method';
   @override

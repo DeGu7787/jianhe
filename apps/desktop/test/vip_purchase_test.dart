@@ -65,8 +65,11 @@ void main() {
         true,
         false,
       ]);
-      expect(cn.plans[2].regularPrice, '¥298.00');
-      expect(cn.plans[1].regularPrice, isNull);
+      // No early-bird offer: no regular price, savings or deadline.
+      expect(cn.plans.map((plan) => plan.regularPrice), everyElement(isNull));
+      expect(cn.plans.map((plan) => plan.earlyBird), everyElement(isFalse));
+      expect(cn.plans[1].savings, isNull);
+      expect(catalog.earlyBirdEndsAt, isNull);
       expect(cn.methods.map((method) => method.action), <VipPayActionType>[
         VipPayActionType.qr,
         VipPayActionType.url,
@@ -81,6 +84,35 @@ void main() {
       expect(intl.plans[1].recommended, isTrue);
       expect(intl.plans[2].regularPrice, isNull);
       expect(intl.methods.single.mock, isTrue);
+    });
+
+    test('early-bird plans carry the regular price and the deadline', () {
+      final catalog = VipPlanCatalog.fromJson(_catalogJson(earlyBird: true));
+      expect(catalog.earlyBirdEndsAt, DateTime.utc(2027, 2, 2, 16));
+      final cn = catalog.market('cn')!;
+      expect(cn.plans.map((plan) => plan.price), <String>[
+        '¥6.90',
+        '¥48.00',
+        '¥128.00',
+      ]);
+      expect(cn.plans.map((plan) => plan.regularPrice), <String>[
+        '¥9.90',
+        '¥68.00',
+        '¥168.00',
+      ]);
+      expect(cn.plans.map((plan) => plan.savings), <String>[
+        '¥3',
+        '¥20',
+        '¥40',
+      ]);
+      expect(cn.plans.map((plan) => plan.percentOff), <int>[30, 29, 23]);
+      final intl = catalog.market('intl')!;
+      expect(intl.plans.map((plan) => plan.savings), <String>[
+        'US\$1',
+        'US\$10',
+        'US\$20',
+      ]);
+      expect(intl.plans.map((plan) => plan.percentOff), <int>[20, 33, 25]);
     });
 
     test('a server without purchase entries offers nothing to buy', () {
@@ -233,6 +265,29 @@ void main() {
     },
   );
 
+  test('the English interface only sells in USD', () async {
+    final api = _FakeBillingAccountApi();
+    final account = await _signedIn(api);
+    final controller = _controller(
+      account,
+      api,
+      preferredMarket: 'intl',
+      lockMarket: true,
+    );
+
+    await controller.loadPlans();
+    expect(controller.market?.id, 'intl');
+    expect(controller.alternativeMarket, isNull);
+    controller.selectMarket('cn');
+    expect(controller.market?.id, 'intl');
+    expect(controller.selectedPlan?.price, 'US\$29.99');
+
+    // The Chinese interface offers the other entry.
+    final chinese = _controller(account, api, preferredMarket: 'cn');
+    await chinese.loadPlans();
+    expect(chinese.alternativeMarket?.id, 'intl');
+  });
+
   test('controller keeps the order payable after a failed payment', () async {
     final api = _FakeBillingAccountApi();
     final account = await _signedIn(api);
@@ -360,10 +415,12 @@ void main() {
     expect(find.text('¥168.00'), findsOneWidget);
     expect(find.text('季度 VIP'), findsNothing);
     expect(find.byKey(const Key('vip-plan-year-recommended')), findsOneWidget);
-    expect(find.text('早鸟价'), findsOneWidget);
-    expect(find.text('早鸟活动结束后恢复正式价 ¥298.00'), findsOneWidget);
-    expect(find.text('国内 · 人民币'), findsOneWidget);
-    expect(find.text('海外 · 美元'), findsOneWidget);
+    // Without an early-bird offer there is no banner and no regular price.
+    expect(find.byKey(const Key('vip-early-bird-banner')), findsNothing);
+    expect(find.byKey(const Key('vip-plan-year-regular')), findsNothing);
+    // One entry at a time; the other is a link, not a toggle.
+    expect(find.text('US\$29.99'), findsNothing);
+    expect(find.text('不在中国大陆？使用海外支付（美元）'), findsOneWidget);
     expect(find.byKey(const Key('vip-no-refund')), findsOneWidget);
     expect(find.textContaining('购买后不支持退款'), findsWidgets);
 
@@ -405,7 +462,7 @@ void main() {
     expect(api.created, <String>['year:mock_cn_qr:$_terms']);
   });
 
-  testWidgets('switching the entry changes prices, not the language', (
+  testWidgets('the Chinese interface can switch to the overseas entry', (
     tester,
   ) async {
     tester.view.physicalSize = const Size(450, 900);
@@ -429,12 +486,11 @@ void main() {
     );
     await tester.pumpAndSettle();
     expect(find.text('¥68.00'), findsOneWidget);
-    await tester.tap(find.byKey(const Key('vip-market-intl')));
+    await tester.tap(find.byKey(const Key('vip-market-switch')));
     await tester.pumpAndSettle();
     expect(find.text('¥68.00'), findsNothing);
+    expect(find.text('在中国大陆？改用国内支付（人民币）'), findsOneWidget);
     expect(find.text('US\$29.99'), findsOneWidget);
-    // The overseas lifetime plan has no early-bird price.
-    expect(find.byKey(const Key('vip-plan-lifetime-regular')), findsNothing);
     expect(find.text('年度 VIP'), findsOneWidget);
     // One method in this entry: no method picker.
     expect(find.byKey(const Key('vip-method-mock_intl')), findsNothing);
@@ -483,9 +539,7 @@ void main() {
     expect(find.byKey(const Key('vip-purchase')), findsNothing);
   });
 
-  testWidgets('the English interface sells too, starting overseas', (
-    tester,
-  ) async {
+  testWidgets('the English interface sells in USD only', (tester) async {
     tester.view.physicalSize = const Size(450, 900);
     tester.view.devicePixelRatio = 1;
     addTearDown(tester.view.resetPhysicalSize);
@@ -512,16 +566,61 @@ void main() {
     expect(find.text('US\$4.99'), findsOneWidget);
     expect(find.text('Monthly VIP'), findsOneWidget);
     expect(find.text('Best value'), findsOneWidget);
-    expect(find.text('International · USD'), findsOneWidget);
     expect(find.textContaining('non-refundable'), findsWidgets);
     expect(find.text('Pay US\$29.99'), findsOneWidget);
 
-    // The CNY entry is one tap away and keeps the English interface.
-    await tester.tap(find.byKey(const Key('vip-market-cn')));
-    await tester.pumpAndSettle();
-    expect(find.text('¥9.90'), findsOneWidget);
-    expect(find.text('Monthly VIP'), findsOneWidget);
-    expect(find.text('Early bird'), findsOneWidget);
+    // No CNY prices and no way to switch to them.
+    expect(find.byKey(const Key('vip-market-switch')), findsNothing);
+    expect(find.textContaining('¥'), findsNothing);
+  });
+
+  testWidgets('the early-bird offer is shown with its savings and deadline', (
+    tester,
+  ) async {
+    tester.view.physicalSize = const Size(450, 900);
+    tester.view.devicePixelRatio = 1;
+    addTearDown(tester.view.resetPhysicalSize);
+    addTearDown(tester.view.resetDevicePixelRatio);
+    final api = _FakeBillingAccountApi(earlyBird: true);
+    final account = await _signedIn(api);
+
+    Future<void> open(AppLanguage language) async {
+      await tester.pumpWidget(
+        AppLanguageScope(
+          language: language,
+          child: MaterialApp(
+            home: Scaffold(
+              body: VipPurchaseDialog(
+                account: account,
+                billing: api,
+                pollInterval: null,
+              ),
+            ),
+          ),
+        ),
+      );
+      await tester.pumpAndSettle();
+    }
+
+    await open(AppLanguage.zh);
+    expect(find.byKey(const Key('vip-early-bird-banner')), findsOneWidget);
+    expect(find.text('早鸟优惠 · 低至 7 折'), findsOneWidget);
+    expect(find.text('限时优惠，截至 2027-02-02，之后恢复正式价'), findsOneWidget);
+    expect(find.text('¥48.00'), findsOneWidget);
+    expect(find.text('省 ¥20'), findsOneWidget);
+    expect(find.text('省 ¥3'), findsOneWidget);
+    expect(find.text('省 ¥40'), findsOneWidget);
+    expect(find.byKey(const Key('vip-plan-year-regular')), findsOneWidget);
+    expect(find.text('去支付 ¥48.00（早鸟价）'), findsOneWidget);
+
+    AppStrings.setCurrentLanguage(AppLanguage.en);
+    addTearDown(() => AppStrings.setCurrentLanguage(AppLanguage.zh));
+    await tester.pumpWidget(const SizedBox());
+    await open(AppLanguage.en);
+    expect(find.text('Early-bird offer · Save up to 33%'), findsOneWidget);
+    expect(find.text('US\$19.99'), findsOneWidget);
+    expect(find.text('Save US\$10'), findsOneWidget);
+    expect(find.text('Pay US\$19.99 (early-bird price)'), findsOneWidget);
   });
 }
 
@@ -529,12 +628,14 @@ VipPurchaseController _controller(
   AccountSessionController account,
   _FakeBillingAccountApi api, {
   String? preferredMarket,
+  bool lockMarket = false,
   Duration? pollInterval,
 }) {
   final controller = VipPurchaseController(
     account: account,
     billing: api,
     preferredMarket: preferredMarket,
+    lockMarket: lockMarket,
     pollInterval: pollInterval,
   );
   addTearDown(controller.dispose);
@@ -579,12 +680,18 @@ const _methodMarket = <String, String>{
 String _amount(int cents) =>
     '${cents ~/ 100}.${(cents % 100).toString().padLeft(2, '0')}';
 
-Map<String, Object?> _catalogJson({bool paymentAvailable = true}) {
+Map<String, Object?> _catalogJson({
+  bool paymentAvailable = true,
+  bool earlyBird = false,
+}) {
   List<Object?> plans(String market) => <Object?>[
     for (final id in _names.keys)
-      _planJson(id, market, _prices[market]![id]!, _months[id]!),
+      earlyBird
+          ? _earlyBirdPlanJson(id, market)
+          : _planJson(id, market, _prices[market]![id]!, _months[id]!),
   ];
   return <String, Object?>{
+    if (earlyBird) 'early_bird_ends_at': '2027-02-02T16:00:00Z',
     'plans': plans('cn'),
     'provider': paymentAvailable ? 'mock' : '',
     'payment_available': paymentAvailable,
@@ -644,11 +751,22 @@ Map<String, Object?> _planJson(
   'months': months,
   'lifetime': id == 'lifetime',
   'recommended': id == 'year',
-  if (market == 'cn' && id == 'lifetime') ...<String, Object?>{
-    'regular_amount_cents': 29800,
-    'regular_amount': '298.00',
-  },
 };
+
+const _earlyBirdPrices = <String, Map<String, int>>{
+  'cn': <String, int>{'month': 690, 'year': 4800, 'lifetime': 12800},
+  'intl': <String, int>{'month': 399, 'year': 1999, 'lifetime': 5900},
+};
+
+/// A plan as the server sends it while the early-bird offer runs.
+Map<String, Object?> _earlyBirdPlanJson(String id, String market) {
+  final regular = _prices[market]![id]!;
+  return <String, Object?>{
+    ..._planJson(id, market, _earlyBirdPrices[market]![id]!, _months[id]!),
+    'regular_amount_cents': regular,
+    'regular_amount': _amount(regular),
+  };
+}
 
 Map<String, Object?> _orderJson(
   String status, {
@@ -690,9 +808,11 @@ class _FakeBillingAccountApi
   _FakeBillingAccountApi({
     this.paymentAvailable = true,
     this.closeOrders = false,
+    this.earlyBird = false,
   });
 
   final bool paymentAvailable;
+  final bool earlyBird;
   final bool closeOrders;
 
   /// `plan:method:terms` of every created order.
@@ -773,8 +893,9 @@ class _FakeBillingAccountApi
   }
 
   @override
-  Future<VipPlanCatalog> fetchVipPlans() async =>
-      VipPlanCatalog.fromJson(_catalogJson(paymentAvailable: paymentAvailable));
+  Future<VipPlanCatalog> fetchVipPlans() async => VipPlanCatalog.fromJson(
+    _catalogJson(paymentAvailable: paymentAvailable, earlyBird: earlyBird),
+  );
 
   @override
   Future<VipOrder> createVipOrder({
