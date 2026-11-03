@@ -866,6 +866,132 @@ class EnStrings extends AppStrings {
   @override
   String get planBadgeFree => 'Free';
 
+  // Account: VIP purchase
+  @override
+  String get vipPurchaseTitle => 'Get VIP';
+  @override
+  String get vipRenewTitle => 'Renew VIP';
+  @override
+  String get vipCashierTitle => 'Checkout';
+  @override
+  String get vipMockCashierTitle => 'Test checkout';
+  @override
+  String get vipPaidTitle => 'Payment complete';
+  @override
+  String vipRenewHint(String date) =>
+      'Your VIP is valid until $date. Renewing adds time on top of that.';
+  @override
+  String get vipBuyHint =>
+      'With VIP, your items and skills sync to your other devices automatically.';
+  @override
+  String vipMarketName(String market) => switch (market) {
+    'cn' => 'Mainland China · CNY',
+    'intl' => 'International · USD',
+    _ => market,
+  };
+  @override
+  String vipPlanName(String planId, String fallback) => switch (planId) {
+    'month' => 'Monthly VIP',
+    'quarter' => 'Quarterly VIP',
+    'year' => 'Yearly VIP',
+    'lifetime' => 'Lifetime VIP',
+    _ => fallback,
+  };
+  @override
+  String vipPlanDuration(int months, bool lifetime) =>
+      lifetime
+      ? 'One payment, never expires'
+      : months == 12
+      ? '1 year'
+      : months % 12 == 0
+      ? '${months ~/ 12} years'
+      : months == 1
+      ? '1 month'
+      : '$months months';
+  @override
+  String vipPerMonth(String price) => 'about $price/month';
+  @override
+  String get vipRecommended => 'Best value';
+  @override
+  String get vipEarlyBird => 'Early bird';
+  @override
+  String vipRegularPrice(String price) =>
+      'Regular price $price after the early-bird offer';
+  @override
+  String get vipPayMethod => 'Payment method';
+  @override
+  String get vipNoRefundNotice =>
+      'VIP is a digital service that starts as soon as payment succeeds. Purchases are non-refundable.';
+  @override
+  String get vipTermsAgreeBefore => 'I have read and agree to the ';
+  @override
+  String get vipTermsLink => 'Terms of Service';
+  @override
+  String get vipTermsAgreeAfter =>
+      ' (VIP section). I agree that VIP starts immediately, and I understand that I lose any right to withdraw and that purchases are non-refundable.';
+  @override
+  String get vipChoosePlan => 'Choose a plan';
+  @override
+  String vipPayAmount(String price) => 'Pay $price';
+  @override
+  String get vipMockBanner => 'Test payment · no real money is charged';
+  @override
+  String get vipInfoProduct => 'Item';
+  @override
+  String get vipInfoOrderNo => 'Order';
+  @override
+  String get vipInfoDeadline => 'Pay by';
+  @override
+  String get vipScanToPay => 'Scan the QR code with your phone to pay.';
+  @override
+  String get vipPayInBrowser =>
+      'The payment page is open in your browser. Come back here once you\'ve paid.';
+  @override
+  String get vipReopenPayPage => 'Open the payment page again';
+  @override
+  String get vipCheckPaid => 'I\'ve paid';
+  @override
+  String get vipAutoRefreshHint =>
+      'This updates by itself after you pay, or tap “I\'ve paid”.';
+  @override
+  String get vipNotPaidYet =>
+      'No payment for this order has arrived yet. Please finish paying and try again.';
+  @override
+  String get vipMockPaySuccess => 'Simulate a successful payment';
+  @override
+  String get vipMockPayFail => 'Simulate a failed payment';
+  @override
+  String get vipCancelOrder => 'Cancel the order and choose again';
+  @override
+  String vipPlanActivated(String plan) => '$plan is active';
+  @override
+  String get vipLifetimeThanks =>
+      'You\'re a lifetime VIP. Thank you for your support!';
+  @override
+  String get vipEntitlementActive => 'Your membership is active.';
+  @override
+  String vipPaidValidUntil(String date) => 'VIP is valid until $date';
+  @override
+  String vipOrderNoLine(String orderNo) => 'Order $orderNo';
+  @override
+  String get vipReloadPlans => 'Reload';
+  @override
+  String get vipPaymentUnavailable =>
+      'Payments aren\'t available yet. Please try again later.';
+  @override
+  String get vipUpdateRequired =>
+      'This version of JianHe can\'t use this payment method. Please update.';
+  @override
+  String get vipOrderCancelled => 'Order cancelled.';
+  @override
+  String get vipOrderClosed => 'This order has closed. Please place a new one.';
+  @override
+  String get vipBadResponse =>
+      'The cloud service sent data JianHe can\'t read.';
+  @override
+  String get vipPaymentFailed =>
+      'The payment couldn\'t be processed. Please try again.';
+
   // Account: sync card
   @override
   String get syncStatusNeedsVip =>

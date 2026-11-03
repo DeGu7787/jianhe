@@ -709,6 +709,10 @@ class AccountSessionController extends ChangeNotifier {
         : CredentialRules.loginPasswordTooLongMessage;
   }
 
+  /// Opens [uri] in the system browser, e.g. a payment page. Throws an
+  /// [AccountApiException] when no browser could be started.
+  Future<void> openInBrowser(Uri uri) => _externalBrowserOpener(uri);
+
   Future<bool> refreshAccount() async {
     if (!configured || busy || _session == null) return false;
     _setState(status: AccountSessionStatus.working, clearMessage: true);

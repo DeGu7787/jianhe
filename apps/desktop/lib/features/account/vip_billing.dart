@@ -1,90 +1,234 @@
 /// VIP 购买相关的数据模型与远端接口。
 ///
-/// 价格、套餐与支付渠道全部由服务端下发；客户端只负责展示与驱动流程，
-/// 因此调整价格或切换到真实支付渠道时不必重新发布客户端。
+/// 购买入口（国内 / 海外）、价格、币种、支付方式全部由服务端下发；
+/// 客户端只负责展示与驱动流程，因此调整价格或接入新的支付渠道时不必
+/// 重新发布客户端，客户端代码里也不出现任何具体的支付渠道。
 library;
 
-/// 服务端当前启用的模拟支付渠道标识。
-const String vipMockPaymentProvider = 'mock';
+/// 国内入口（人民币）。
+const String vipMarketCN = 'cn';
+
+/// 海外入口（美元）。
+const String vipMarketIntl = 'intl';
+
+/// 金额的展示形式，例如 `¥5.98`、`US$1.49`。
+String formatVipPrice(String currency, String amount) => switch (currency) {
+  'CNY' => '¥$amount',
+  'USD' => 'US\$$amount',
+  _ => '$currency $amount',
+};
 
 class VipPlan {
   const VipPlan({
     required this.id,
     required this.name,
+    required this.market,
+    required this.currency,
     required this.amountCents,
     required this.amount,
     required this.months,
     required this.lifetime,
+    this.recommended = false,
+    this.regularAmount,
   });
 
   factory VipPlan.fromJson(Map<String, Object?> json) {
     return VipPlan(
       id: _string(json, 'id'),
       name: _string(json, 'name'),
+      // Servers before purchase entries only sold in CNY.
+      market: (json['market'] as String?) ?? vipMarketCN,
+      currency: (json['currency'] as String?) ?? 'CNY',
       amountCents: _int(json, 'amount_cents'),
       amount: _string(json, 'amount'),
       months: _int(json, 'months'),
       lifetime: _bool(json, 'lifetime'),
+      // Older servers send neither field.
+      recommended: (json['recommended'] as bool?) ?? false,
+      regularAmount: switch (json['regular_amount']) {
+        final String value when value.isNotEmpty => value,
+        _ => null,
+      },
     );
   }
 
   final String id;
+
+  /// 服务端给出的套餐名，仅在客户端不认识 [id] 时展示。
   final String name;
+  final String market;
+  final String currency;
+
+  /// 以币种最小单位（分 / 美分）计的金额。
   final int amountCents;
 
-  /// 以“元”为单位的展示金额，例如 `5.98`。
+  /// 展示金额，例如 `5.98`。
   final String amount;
   final int months;
   final bool lifetime;
 
-  /// 套餐时长的人类可读描述。
-  String get durationLabel {
-    if (lifetime) return '一次购买，永久有效';
-    if (months % 12 == 0) return '${months ~/ 12} 年';
-    return '$months 个月';
-  }
+  /// 服务端推荐的套餐：突出显示，并在打开购买页时默认选中。
+  final bool recommended;
 
-  /// 折算后的月均价格（仅多月套餐有意义）。
-  String? get monthlyLabel {
+  /// 早鸟套餐活动结束后的正式价格（不带币种符号）；不是早鸟套餐时为 null。
+  final String? regularAmount;
+
+  /// 带币种符号的正式价格，例如 `¥298.00`；不是早鸟套餐时为 null。
+  String? get regularPrice =>
+      regularAmount == null ? null : formatVipPrice(currency, regularAmount!);
+
+  /// 带币种符号的价格，例如 `¥5.98`。
+  String get price => formatVipPrice(currency, amount);
+
+  /// 折算后的月均价格（仅多月套餐有意义），带币种符号。
+  String? get monthlyPrice {
     if (lifetime || months <= 1) return null;
     final perMonth = amountCents / months / 100;
-    return '约 ¥${perMonth.toStringAsFixed(2)}/月';
+    return formatVipPrice(currency, perMonth.toStringAsFixed(2));
   }
+}
+
+/// 客户端知道如何处理的支付动作。
+enum VipPayActionType {
+  /// 展示二维码，用手机扫码支付。
+  qr,
+
+  /// 在系统浏览器中打开收银台页面。
+  url,
+
+  /// 当前版本不认识的动作，需要更新客户端。
+  unsupported;
+
+  static VipPayActionType parse(String? value) => switch (value) {
+    'qr' => qr,
+    'url' => url,
+    _ => unsupported,
+  };
+}
+
+/// 某个购买入口下的一种支付方式；名称由服务端下发。
+class VipPayMethod {
+  const VipPayMethod({
+    required this.id,
+    required this.name,
+    required this.action,
+    required this.mock,
+  });
+
+  factory VipPayMethod.fromJson(Map<String, Object?> json) => VipPayMethod(
+    id: _string(json, 'id'),
+    name: _string(json, 'name'),
+    action: VipPayActionType.parse(json['action'] as String?),
+    mock: (json['mock'] as bool?) ?? false,
+  );
+
+  final String id;
+  final String name;
+  final VipPayActionType action;
+
+  /// 模拟支付方式，不会产生真实扣款。
+  final bool mock;
+}
+
+/// 一个购买入口（国内 / 海外）：独立的币种、价格和支付方式。
+class VipMarket {
+  const VipMarket({
+    required this.id,
+    required this.currency,
+    required this.plans,
+    required this.methods,
+  });
+
+  factory VipMarket.fromJson(Map<String, Object?> json) {
+    return VipMarket(
+      id: _string(json, 'id'),
+      currency: _string(json, 'currency'),
+      plans: <VipPlan>[
+        for (final item in _list(json, 'plans'))
+          VipPlan.fromJson(_map(item, 'plans')),
+      ],
+      methods: <VipPayMethod>[
+        for (final item in _list(json, 'methods'))
+          VipPayMethod.fromJson(_map(item, 'methods')),
+      ],
+    );
+  }
+
+  final String id;
+  final String currency;
+  final List<VipPlan> plans;
+  final List<VipPayMethod> methods;
 }
 
 class VipPlanCatalog {
   const VipPlanCatalog({
-    required this.plans,
-    required this.provider,
+    required this.markets,
     required this.paymentAvailable,
+    this.termsVersion,
+    this.termsUrl,
   });
 
   factory VipPlanCatalog.fromJson(Map<String, Object?> json) {
-    final rawPlans = json['plans'];
-    if (rawPlans is! List) throw const FormatException('Missing plans.');
+    if (json['plans'] is! List) throw const FormatException('Missing plans.');
+    final rawMarkets = json['markets'];
+    final termsUrl = json['terms_url'];
     return VipPlanCatalog(
-      plans: <VipPlan>[
-        for (final item in rawPlans) VipPlan.fromJson(_map(item, 'plans')),
-      ],
-      provider: (json['provider'] as String?) ?? '',
+      // A server without purchase entries cannot take this client's orders,
+      // so it simply offers no entry.
+      markets: rawMarkets is List
+          ? <VipMarket>[
+              for (final item in rawMarkets)
+                VipMarket.fromJson(_map(item, 'markets')),
+            ]
+          : const <VipMarket>[],
       paymentAvailable: _bool(json, 'payment_available'),
+      termsVersion: json['terms_version'] as String?,
+      termsUrl: termsUrl is String ? Uri.tryParse(termsUrl) : null,
     );
   }
 
-  final List<VipPlan> plans;
-  final String provider;
+  /// 有可用支付方式的购买入口，按展示顺序排列。
+  final List<VipMarket> markets;
   final bool paymentAvailable;
 
-  bool get isMock => provider == vipMockPaymentProvider;
+  /// 下单时必须回传的服务条款版本。
+  final String? termsVersion;
+
+  /// 含 VIP 会员条款的服务条款页面。
+  final Uri? termsUrl;
+
+  VipMarket? market(String? id) {
+    for (final market in markets) {
+      if (market.id == id) return market;
+    }
+    return null;
+  }
 }
 
 enum VipOrderStatus { pending, paid, closed }
+
+/// 服务端告诉客户端如何支付一笔待支付订单。
+class VipPayAction {
+  const VipPayAction({required this.type, required this.value});
+
+  factory VipPayAction.fromJson(Map<String, Object?> json) => VipPayAction(
+    type: VipPayActionType.parse(json['type'] as String?),
+    value: _string(json, 'value'),
+  );
+
+  final VipPayActionType type;
+
+  /// 二维码内容或收银台地址。
+  final String value;
+}
 
 class VipOrder {
   const VipOrder({
     required this.orderNo,
     required this.plan,
     required this.planName,
+    required this.market,
+    required this.currency,
     required this.amountCents,
     required this.amount,
     required this.provider,
@@ -95,6 +239,7 @@ class VipOrder {
     this.closedAt,
     this.vipExpiresAfter,
     this.vipLifetime = false,
+    this.payAction,
   });
 
   factory VipOrder.fromJson(Map<String, Object?> json) {
@@ -104,10 +249,13 @@ class VipOrder {
       'closed' => VipOrderStatus.closed,
       _ => throw const FormatException('Invalid order status.'),
     };
+    final payAction = json['pay_action'];
     return VipOrder(
       orderNo: _string(json, 'order_no'),
       plan: _string(json, 'plan'),
       planName: (json['plan_name'] as String?) ?? '',
+      market: (json['market'] as String?) ?? vipMarketCN,
+      currency: (json['currency'] as String?) ?? 'CNY',
       amountCents: _int(json, 'amount_cents'),
       amount: _string(json, 'amount'),
       provider: _string(json, 'provider'),
@@ -118,12 +266,17 @@ class VipOrder {
       closedAt: _dateTime(json, 'closed_at', optional: true),
       vipExpiresAfter: _dateTime(json, 'vip_expires_after', optional: true),
       vipLifetime: (json['vip_lifetime'] as bool?) ?? false,
+      payAction: payAction == null
+          ? null
+          : VipPayAction.fromJson(_map(payAction, 'pay_action')),
     );
   }
 
   final String orderNo;
   final String plan;
   final String planName;
+  final String market;
+  final String currency;
   final int amountCents;
   final String amount;
   final String provider;
@@ -138,6 +291,12 @@ class VipOrder {
   /// 支付成功后账号的 VIP 到期时间。
   final DateTime? vipExpiresAfter;
   final bool vipLifetime;
+
+  /// 待支付订单的支付动作；已支付或已关闭的订单为 null。
+  final VipPayAction? payAction;
+
+  /// 带币种符号的金额，例如 `¥29.98`。
+  String get price => formatVipPrice(currency, amount);
 }
 
 /// 模拟收银台上用户选择的支付结果；接入真实渠道后由渠道回调替代。
@@ -146,9 +305,13 @@ enum VipMockPaymentOutcome { success, fail }
 abstract interface class VipBillingRemote {
   Future<VipPlanCatalog> fetchVipPlans();
 
+  /// 下单。[methodId] 决定购买入口，从而决定价格与币种；
+  /// [termsVersion] 是用户勾选同意的服务条款版本。
   Future<VipOrder> createVipOrder({
     required String accessToken,
     required String planId,
+    required String methodId,
+    required String termsVersion,
   });
 
   Future<VipOrder> fetchVipOrder({
@@ -171,6 +334,12 @@ abstract interface class VipBillingRemote {
 Map<String, Object?> _map(Object? value, String key) {
   if (value is Map<String, Object?>) return value;
   if (value is Map) return value.cast<String, Object?>();
+  throw FormatException('Missing or invalid $key.');
+}
+
+List<Object?> _list(Map<String, Object?> json, String key) {
+  final value = json[key];
+  if (value is List) return value;
   throw FormatException('Missing or invalid $key.');
 }
 

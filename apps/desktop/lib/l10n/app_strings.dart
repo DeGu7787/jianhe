@@ -416,6 +416,54 @@ abstract class AppStrings {
   String get planBadgeReadOnly;
   String get planBadgeFree;
 
+  // Account: VIP purchase
+  String get vipPurchaseTitle;
+  String get vipRenewTitle;
+  String get vipCashierTitle;
+  String get vipMockCashierTitle;
+  String get vipPaidTitle;
+  String vipRenewHint(String date);
+  String get vipBuyHint;
+  String vipMarketName(String market);
+  String vipPlanName(String planId, String fallback);
+  String vipPlanDuration(int months, bool lifetime);
+  String vipPerMonth(String price);
+  String get vipRecommended;
+  String get vipEarlyBird;
+  String vipRegularPrice(String price);
+  String get vipPayMethod;
+  String get vipNoRefundNotice;
+  String get vipTermsAgreeBefore;
+  String get vipTermsLink;
+  String get vipTermsAgreeAfter;
+  String get vipChoosePlan;
+  String vipPayAmount(String price);
+  String get vipMockBanner;
+  String get vipInfoProduct;
+  String get vipInfoOrderNo;
+  String get vipInfoDeadline;
+  String get vipScanToPay;
+  String get vipPayInBrowser;
+  String get vipReopenPayPage;
+  String get vipCheckPaid;
+  String get vipAutoRefreshHint;
+  String get vipNotPaidYet;
+  String get vipMockPaySuccess;
+  String get vipMockPayFail;
+  String get vipCancelOrder;
+  String vipPlanActivated(String plan);
+  String get vipLifetimeThanks;
+  String get vipEntitlementActive;
+  String vipPaidValidUntil(String date);
+  String vipOrderNoLine(String orderNo);
+  String get vipReloadPlans;
+  String get vipPaymentUnavailable;
+  String get vipUpdateRequired;
+  String get vipOrderCancelled;
+  String get vipOrderClosed;
+  String get vipBadResponse;
+  String get vipPaymentFailed;
+
   // Account: sync card
   String get syncStatusNeedsVip;
   String get syncStatusGrace;

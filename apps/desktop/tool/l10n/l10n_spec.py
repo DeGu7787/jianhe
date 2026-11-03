@@ -530,6 +530,96 @@ g('cloudNotConfiguredBody', "'请使用包含正式 API 地址的 Windows 安装
 g('planBadgeReadOnly', "'只读'", "'Read-only'")
 g('planBadgeFree', "'免费'", "'Free'")
 
+section('Account: VIP purchase')
+g('vipPurchaseTitle', "'开通 VIP'", "'Get VIP'")
+g('vipRenewTitle', "'续费 VIP'", "'Renew VIP'")
+g('vipCashierTitle', "'收银台'", "'Checkout'")
+g('vipMockCashierTitle', "'模拟收银台'", "'Test checkout'")
+g('vipPaidTitle', "'支付成功'", "'Payment complete'")
+f('vipRenewHint', 'String date', "'当前 VIP 有效期至 $date，续费时长将自动顺延。'",
+  "'Your VIP is valid until $date. Renewing adds time on top of that.'")
+g('vipBuyHint', "'开通后素材和 Skill 会自动同步到你的其他设备。'",
+  "'With VIP, your items and skills sync to your other devices automatically.'")
+f('vipMarketName', 'String market', """switch (market) {
+    'cn' => '国内 · 人民币',
+    'intl' => '海外 · 美元',
+    _ => market,
+  }""", """switch (market) {
+    'cn' => 'Mainland China · CNY',
+    'intl' => 'International · USD',
+    _ => market,
+  }""")
+f('vipPlanName', 'String planId, String fallback', """switch (planId) {
+    'month' => '月度 VIP',
+    'quarter' => '季度 VIP',
+    'year' => '年度 VIP',
+    'lifetime' => '永久 VIP',
+    _ => fallback,
+  }""", """switch (planId) {
+    'month' => 'Monthly VIP',
+    'quarter' => 'Quarterly VIP',
+    'year' => 'Yearly VIP',
+    'lifetime' => 'Lifetime VIP',
+    _ => fallback,
+  }""")
+f('vipPlanDuration', 'int months, bool lifetime', """lifetime
+      ? '一次购买，永久有效'
+      : months % 12 == 0
+      ? '${months ~/ 12} 年'
+      : '$months 个月'""", """lifetime
+      ? 'One payment, never expires'
+      : months == 12
+      ? '1 year'
+      : months % 12 == 0
+      ? '${months ~/ 12} years'
+      : months == 1
+      ? '1 month'
+      : '$months months'""")
+f('vipPerMonth', 'String price', "'约 $price/月'", "'about $price/month'")
+g('vipRecommended', "'推荐'", "'Best value'")
+g('vipEarlyBird', "'早鸟价'", "'Early bird'")
+f('vipRegularPrice', 'String price', "'早鸟活动结束后恢复正式价 $price'",
+  "'Regular price $price after the early-bird offer'")
+g('vipPayMethod', "'支付方式'", "'Payment method'")
+g('vipNoRefundNotice', "'VIP 为虚拟服务，支付成功后立即生效，购买后不支持退款。'",
+  "'VIP is a digital service that starts as soon as payment succeeds. Purchases are non-refundable.'")
+g('vipTermsAgreeBefore', "'我已阅读并同意'", "'I have read and agree to the '")
+g('vipTermsLink', "'《服务条款》'", "'Terms of Service'")
+g('vipTermsAgreeAfter', "'中的 VIP 会员条款，知晓购买后不支持退款。'",
+  "' (VIP section). I agree that VIP starts immediately, and I understand that I lose any right to withdraw and that purchases are non-refundable.'")
+g('vipChoosePlan', "'请选择套餐'", "'Choose a plan'")
+f('vipPayAmount', 'String price', "'去支付 $price'", "'Pay $price'")
+g('vipMockBanner', "'测试支付 · 不会产生任何真实扣款'", "'Test payment · no real money is charged'")
+g('vipInfoProduct', "'商品'", "'Item'")
+g('vipInfoOrderNo', "'订单号'", "'Order'")
+g('vipInfoDeadline', "'支付截止'", "'Pay by'")
+g('vipScanToPay', "'请用手机扫描二维码完成支付。'", "'Scan the QR code with your phone to pay.'")
+g('vipPayInBrowser', "'已在浏览器中打开支付页面，支付完成后回到这里。'",
+  "'The payment page is open in your browser. Come back here once you\\'ve paid.'")
+g('vipReopenPayPage', "'重新打开支付页面'", "'Open the payment page again'")
+g('vipCheckPaid', "'我已完成支付'", "'I\\'ve paid'")
+g('vipAutoRefreshHint', "'支付完成后会自动更新，也可以点“我已完成支付”。'",
+  "'This updates by itself after you pay, or tap “I\\'ve paid”.'")
+g('vipNotPaidYet', "'还没有收到这笔订单的付款，请完成支付后再试。'",
+  "'No payment for this order has arrived yet. Please finish paying and try again.'")
+g('vipMockPaySuccess', "'模拟支付成功'", "'Simulate a successful payment'")
+g('vipMockPayFail', "'模拟支付失败'", "'Simulate a failed payment'")
+g('vipCancelOrder', "'取消订单，重新选择套餐'", "'Cancel the order and choose again'")
+f('vipPlanActivated', 'String plan', "'$plan 已开通'", "'$plan is active'")
+g('vipLifetimeThanks', "'你已是永久 VIP，感谢支持！'", "'You\\'re a lifetime VIP. Thank you for your support!'")
+g('vipEntitlementActive', "'权益已生效。'", "'Your membership is active.'")
+f('vipPaidValidUntil', 'String date', "'VIP 有效期至 $date'", "'VIP is valid until $date'")
+f('vipOrderNoLine', 'String orderNo', "'订单号 $orderNo'", "'Order $orderNo'")
+g('vipReloadPlans', "'重新加载'", "'Reload'")
+g('vipPaymentUnavailable', "'支付通道暂未开放，请稍后再试。'",
+  "'Payments aren\\'t available yet. Please try again later.'")
+g('vipUpdateRequired', "'当前版本暂不支持该支付方式，请更新笺盒。'",
+  "'This version of JianHe can\\'t use this payment method. Please update.'")
+g('vipOrderCancelled', "'订单已取消。'", "'Order cancelled.'")
+g('vipOrderClosed', "'订单已关闭，请重新下单。'", "'This order has closed. Please place a new one.'")
+g('vipBadResponse', "'云服务返回了无法识别的数据。'", "'The cloud service sent data JianHe can\\'t read.'")
+g('vipPaymentFailed', "'支付处理失败，请重试。'", "'The payment couldn\\'t be processed. Please try again.'")
+
 section('Account: sync card')
 g('syncStatusNeedsVip', "'开通 VIP 后，素材和 Skill 会自动同步到你的其他设备。'",
   "'With VIP, your items and skills sync to your other devices automatically.'")
@@ -804,6 +894,7 @@ g('portalAllCategories', "'全部分类'", "'All categories'")
 f('portalLibraryCount', 'int count', "'云端素材 · $count'", "'Cloud items · $count'")
 f('portalSearchCount', 'int count', "'搜索结果 · $count'", "'Search results · $count'")
 g('portalRecentFirst', "'按最近更新'", "'Recently updated'")
+g('portalRatingFirst', "'按星级从高到低'", "'Highest rated first'")
 g('portalNoContent', "'（无正文）'", "'(No content)'")
 g('portalEmptyTitle', "'没有找到云端内容'", "'Nothing in the cloud yet'")
 g('portalEmptyBody', "'可以新建素材，或先在 Windows 客户端执行同步。'",

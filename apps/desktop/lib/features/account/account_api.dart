@@ -420,10 +420,16 @@ class AccountApi
   Future<VipOrder> createVipOrder({
     required String accessToken,
     required String planId,
+    required String methodId,
+    required String termsVersion,
   }) async {
     final response = await _post(
       '/v1/billing/orders',
-      body: <String, Object?>{'plan': planId},
+      body: <String, Object?>{
+        'plan': planId,
+        'provider': methodId,
+        'terms_version': termsVersion,
+      },
       accessToken: accessToken,
     );
     return VipOrder.fromJson(_successJson(response, 201));

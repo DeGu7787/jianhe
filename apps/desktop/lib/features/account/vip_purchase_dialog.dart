@@ -1,5 +1,8 @@
 import 'package:flutter/material.dart';
+import 'package:jianhe_core/jianhe_core.dart';
+import 'package:qr_flutter/qr_flutter.dart';
 
+import '../../l10n/app_strings.dart';
 import 'account_session_controller.dart';
 import 'vip_billing.dart';
 import 'vip_purchase_controller.dart';
@@ -11,16 +14,20 @@ const _border = Color(0xFFE5DCD0);
 const _paper = Color(0xFFFFFCF5);
 const _green = Color(0xFF32765B);
 
-/// 开通 / 续费 VIP 的对话框：套餐选择 → 模拟收银台 → 支付结果。
+/// 开通 / 续费 VIP 的对话框：选择入口与套餐 → 同意条款 → 收银台 → 支付结果。
 class VipPurchaseDialog extends StatefulWidget {
   const VipPurchaseDialog({
     super.key,
     required this.account,
     required this.billing,
+    this.pollInterval = const Duration(seconds: 3),
   });
 
   final AccountSessionController account;
   final VipBillingRemote billing;
+
+  /// 收银台打开时查询订单状态的间隔；null 表示不自动查询（测试用）。
+  final Duration? pollInterval;
 
   @override
   State<VipPurchaseDialog> createState() => _VipPurchaseDialogState();
@@ -29,12 +36,18 @@ class VipPurchaseDialog extends StatefulWidget {
 class _VipPurchaseDialogState extends State<VipPurchaseDialog> {
   late final VipPurchaseController _controller;
 
+  AppStrings get _s => AppStrings.of(context);
+
   @override
   void initState() {
     super.initState();
+    // 默认选中与界面语言对应的入口，用户可以随时切换。
+    final english = AppStrings.read(context).language == AppLanguage.en;
     _controller = VipPurchaseController(
       account: widget.account,
       billing: widget.billing,
+      preferredMarket: english ? vipMarketIntl : vipMarketCN,
+      pollInterval: widget.pollInterval,
     )..addListener(_refresh);
     _controller.loadPlans();
   }
@@ -63,11 +76,12 @@ class _VipPurchaseDialogState extends State<VipPurchaseDialog> {
   @override
   Widget build(BuildContext context) {
     final stage = _controller.stage;
+    final mock = _controller.orderMethod?.mock ?? false;
     final title = switch (stage) {
-      VipPurchaseStage.awaitingPayment ||
-      VipPurchaseStage.paying => '模拟收银台',
-      VipPurchaseStage.paid => '支付成功',
-      _ => _isRenewal ? '续费 VIP' : '开通 VIP',
+      VipPurchaseStage.awaitingPayment || VipPurchaseStage.paying =>
+        mock ? _s.vipMockCashierTitle : _s.vipCashierTitle,
+      VipPurchaseStage.paid => _s.vipPaidTitle,
+      _ => _isRenewal ? _s.vipRenewTitle : _s.vipPurchaseTitle,
     };
     return Dialog(
       key: const Key('vip-purchase-dialog'),
@@ -75,7 +89,7 @@ class _VipPurchaseDialogState extends State<VipPurchaseDialog> {
       backgroundColor: Colors.white,
       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(18)),
       child: ConstrainedBox(
-        constraints: const BoxConstraints(maxWidth: 380, maxHeight: 560),
+        constraints: const BoxConstraints(maxWidth: 400, maxHeight: 640),
         child: Column(
           mainAxisSize: MainAxisSize.min,
           crossAxisAlignment: CrossAxisAlignment.stretch,
@@ -101,7 +115,7 @@ class _VipPurchaseDialogState extends State<VipPurchaseDialog> {
                   ),
                   IconButton(
                     key: const Key('vip-purchase-close'),
-                    tooltip: '关闭',
+                    tooltip: _s.close,
                     onPressed: stage == VipPurchaseStage.paying ? null : _close,
                     icon: const Icon(Icons.close_rounded),
                   ),
@@ -150,7 +164,7 @@ class _VipPurchaseDialogState extends State<VipPurchaseDialog> {
           key: const Key('vip-plans-retry'),
           onPressed: _controller.loadPlans,
           icon: const Icon(Icons.refresh_rounded),
-          label: const Text('重新加载'),
+          label: Text(_s.vipReloadPlans),
         ),
       ],
     );
@@ -158,21 +172,49 @@ class _VipPurchaseDialogState extends State<VipPurchaseDialog> {
 
   Widget _buildPlanPicker() {
     final catalog = _controller.catalog!;
+    final market = _controller.market;
     final selected = _controller.selectedPlan;
     final creating = _controller.stage == VipPurchaseStage.creatingOrder;
     final account = widget.account.account;
     final expiresAt = account?.entitlement.vipExpiresAt;
+    final methods = market?.methods ?? const <VipPayMethod>[];
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: <Widget>[
         Text(
           _isRenewal && expiresAt != null
-              ? '当前 VIP 有效期至 ${_formatDate(expiresAt)}，续费时长将自动顺延。'
-              : '开通后素材和 Skill 会自动同步到你的其他设备。',
+              ? _s.vipRenewHint(_formatDate(expiresAt))
+              : _s.vipBuyHint,
           style: const TextStyle(color: _muted, fontSize: 12),
         ),
         const SizedBox(height: 12),
-        for (final plan in catalog.plans) ...<Widget>[
+        if (catalog.markets.length > 1) ...<Widget>[
+          SegmentedButton<String>(
+            key: const Key('vip-market'),
+            showSelectedIcon: false,
+            segments: <ButtonSegment<String>>[
+              for (final item in catalog.markets)
+                ButtonSegment<String>(
+                  value: item.id,
+                  label: Text(
+                    _s.vipMarketName(item.id),
+                    key: Key('vip-market-${item.id}'),
+                    style: const TextStyle(fontSize: 12),
+                  ),
+                ),
+            ],
+            selected: <String>{if (market != null) market.id},
+            onSelectionChanged: creating
+                ? null
+                : (value) => _controller.selectMarket(value.first),
+            style: SegmentedButton.styleFrom(
+              selectedBackgroundColor: const Color(0xFFFFF4EC),
+              selectedForegroundColor: _accent,
+            ),
+          ),
+          const SizedBox(height: 12),
+        ],
+        for (final plan in market?.plans ?? const <VipPlan>[]) ...<Widget>[
           _PlanTile(
             plan: plan,
             selected: plan.id == selected?.id,
@@ -181,6 +223,39 @@ class _VipPurchaseDialogState extends State<VipPurchaseDialog> {
           ),
           const SizedBox(height: 8),
         ],
+        if (methods.length > 1) ...<Widget>[
+          const SizedBox(height: 4),
+          Text(
+            _s.vipPayMethod,
+            style: const TextStyle(color: _muted, fontSize: 12),
+          ),
+          const SizedBox(height: 6),
+          Wrap(
+            spacing: 8,
+            runSpacing: 6,
+            children: <Widget>[
+              for (final method in methods)
+                ChoiceChip(
+                  key: Key('vip-method-${method.id}'),
+                  label: Text(method.name),
+                  avatar: Icon(
+                    method.action == VipPayActionType.qr
+                        ? Icons.qr_code_2_rounded
+                        : Icons.open_in_browser_rounded,
+                    size: 16,
+                  ),
+                  selected: method.id == _controller.selectedMethod?.id,
+                  onSelected: creating
+                      ? null
+                      : (_) => _controller.selectMethod(method.id),
+                ),
+            ],
+          ),
+          const SizedBox(height: 10),
+        ],
+        _NoRefundNotice(_s.vipNoRefundNotice),
+        const SizedBox(height: 6),
+        _buildTermsCheckbox(catalog, enabled: !creating),
         if (_controller.checkoutUnavailableReason case final reason?)
           _Notice(reason)
         else if (_controller.message case final message?)
@@ -201,34 +276,118 @@ class _VipPurchaseDialogState extends State<VipPurchaseDialog> {
                     color: Colors.white,
                   ),
                 )
-              : Text(selected == null ? '请选择套餐' : '去支付 ¥${selected.amount}'),
+              : Text(
+                  selected == null
+                      ? _s.vipChoosePlan
+                      : _s.vipPayAmount(selected.price),
+                ),
         ),
       ],
     );
   }
 
+  Widget _buildTermsCheckbox(VipPlanCatalog catalog, {required bool enabled}) {
+    final accepted = _controller.termsAccepted;
+    final termsUrl = catalog.termsUrl;
+    const textStyle = TextStyle(fontSize: 12, color: _ink, height: 1.4);
+    return InkWell(
+      key: const Key('vip-terms-accept'),
+      borderRadius: BorderRadius.circular(8),
+      onTap: enabled ? () => _controller.setTermsAccepted(!accepted) : null,
+      child: Padding(
+        padding: const EdgeInsets.symmetric(vertical: 4),
+        child: Row(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: <Widget>[
+            SizedBox(
+              width: 28,
+              height: 22,
+              child: Checkbox(
+                key: const Key('vip-terms-checkbox'),
+                value: accepted,
+                activeColor: _accent,
+                visualDensity: VisualDensity.compact,
+                materialTapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                onChanged: enabled
+                    ? (value) => _controller.setTermsAccepted(value ?? false)
+                    : null,
+              ),
+            ),
+            const SizedBox(width: 4),
+            Expanded(
+              child: Text.rich(
+                TextSpan(
+                  style: textStyle,
+                  children: <InlineSpan>[
+                    TextSpan(text: _s.vipTermsAgreeBefore),
+                    if (termsUrl == null)
+                      TextSpan(text: _s.vipTermsLink)
+                    else
+                      WidgetSpan(
+                        alignment: PlaceholderAlignment.baseline,
+                        baseline: TextBaseline.alphabetic,
+                        child: GestureDetector(
+                          key: const Key('vip-terms-link'),
+                          onTap: () => _openTerms(termsUrl),
+                          child: MouseRegion(
+                            cursor: SystemMouseCursors.click,
+                            child: Text(
+                              _s.vipTermsLink,
+                              style: textStyle.copyWith(
+                                color: _accent,
+                                decoration: TextDecoration.underline,
+                                decorationColor: _accent,
+                              ),
+                            ),
+                          ),
+                        ),
+                      ),
+                    TextSpan(text: _s.vipTermsAgreeAfter),
+                  ],
+                ),
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Future<void> _openTerms(Uri uri) async {
+    try {
+      await widget.account.openInBrowser(uri);
+    } on Object {
+      // Opening the page is a convenience; the address is also on the
+      // official website.
+    }
+  }
+
   Widget _buildCashier() {
     final order = _controller.order!;
     final paying = _controller.stage == VipPurchaseStage.paying;
+    final method = _controller.orderMethod;
+    final action = order.payAction;
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: <Widget>[
-        Container(
-          padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
-          decoration: BoxDecoration(
-            color: const Color(0xFFFFF2E8),
-            borderRadius: BorderRadius.circular(8),
+        if (method?.mock ?? false) ...<Widget>[
+          Container(
+            padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+            decoration: BoxDecoration(
+              color: const Color(0xFFFFF2E8),
+              borderRadius: BorderRadius.circular(8),
+            ),
+            child: Text(
+              _s.vipMockBanner,
+              key: const Key('vip-mock-banner'),
+              textAlign: TextAlign.center,
+              style: const TextStyle(color: Color(0xFF9A4A22), fontSize: 11),
+            ),
           ),
-          child: const Text(
-            '测试支付 · 不会产生任何真实扣款',
-            key: Key('vip-mock-banner'),
-            textAlign: TextAlign.center,
-            style: TextStyle(color: Color(0xFF9A4A22), fontSize: 11),
-          ),
-        ),
-        const SizedBox(height: 14),
+          const SizedBox(height: 14),
+        ],
         Text(
-          '¥${order.amount}',
+          order.price,
           key: const Key('vip-cashier-amount'),
           textAlign: TextAlign.center,
           style: const TextStyle(
@@ -238,6 +397,45 @@ class _VipPurchaseDialogState extends State<VipPurchaseDialog> {
           ),
         ),
         const SizedBox(height: 12),
+        if (action?.type == VipPayActionType.qr) ...<Widget>[
+          Center(
+            child: Container(
+              padding: const EdgeInsets.all(8),
+              decoration: BoxDecoration(
+                color: Colors.white,
+                borderRadius: BorderRadius.circular(12),
+                border: Border.all(color: _border),
+              ),
+              child: QrImageView(
+                key: const Key('vip-pay-qr'),
+                data: action!.value,
+                size: 176,
+                backgroundColor: Colors.white,
+              ),
+            ),
+          ),
+          const SizedBox(height: 8),
+          Text(
+            _s.vipScanToPay,
+            textAlign: TextAlign.center,
+            style: const TextStyle(color: _muted, fontSize: 12),
+          ),
+          const SizedBox(height: 12),
+        ] else if (action?.type == VipPayActionType.url) ...<Widget>[
+          Text(
+            _s.vipPayInBrowser,
+            key: const Key('vip-pay-in-browser'),
+            textAlign: TextAlign.center,
+            style: const TextStyle(color: _muted, fontSize: 12),
+          ),
+          TextButton.icon(
+            key: const Key('vip-pay-reopen'),
+            onPressed: paying ? null : _controller.openPayPage,
+            icon: const Icon(Icons.open_in_browser_rounded, size: 18),
+            label: Text(_s.vipReopenPayPage),
+          ),
+          const SizedBox(height: 4),
+        ],
         Container(
           padding: const EdgeInsets.all(12),
           decoration: BoxDecoration(
@@ -247,25 +445,34 @@ class _VipPurchaseDialogState extends State<VipPurchaseDialog> {
           ),
           child: Column(
             children: <Widget>[
-              _InfoRow(label: '商品', value: order.planName),
-              _InfoRow(label: '订单号', value: order.orderNo, selectable: true),
               _InfoRow(
-                label: '支付截止',
+                label: _s.vipInfoProduct,
+                value: _s.vipPlanName(order.plan, order.planName),
+              ),
+              if (method != null)
+                _InfoRow(label: _s.vipPayMethod, value: method.name),
+              _InfoRow(
+                label: _s.vipInfoOrderNo,
+                value: order.orderNo,
+                selectable: true,
+              ),
+              _InfoRow(
+                label: _s.vipInfoDeadline,
                 value: _formatDateTime(order.expiresAt),
               ),
             ],
           ),
         ),
+        const SizedBox(height: 8),
+        _NoRefundNotice(_s.vipNoRefundNotice),
         if (_controller.message case final message?) ...<Widget>[
           const SizedBox(height: 10),
           _Notice(message),
         ],
         const SizedBox(height: 14),
         FilledButton.icon(
-          key: const Key('vip-mock-pay-success'),
-          onPressed: paying
-              ? null
-              : () => _controller.mockPay(VipMockPaymentOutcome.success),
+          key: const Key('vip-check-paid'),
+          onPressed: paying ? null : _controller.confirmPaid,
           icon: paying
               ? const SizedBox.square(
                   dimension: 16,
@@ -274,30 +481,51 @@ class _VipPurchaseDialogState extends State<VipPurchaseDialog> {
                     color: Colors.white,
                   ),
                 )
-              : const Icon(Icons.check_circle_outline_rounded),
-          label: const Text('模拟支付成功'),
+              : const Icon(Icons.task_alt_rounded),
+          label: Text(_s.vipCheckPaid),
           style: FilledButton.styleFrom(
             minimumSize: const Size.fromHeight(44),
-            backgroundColor: _green,
+            backgroundColor: _accent,
           ),
         ),
-        const SizedBox(height: 8),
-        OutlinedButton.icon(
-          key: const Key('vip-mock-pay-fail'),
-          onPressed: paying
-              ? null
-              : () => _controller.mockPay(VipMockPaymentOutcome.fail),
-          icon: const Icon(Icons.error_outline_rounded),
-          label: const Text('模拟支付失败'),
-          style: OutlinedButton.styleFrom(
-            minimumSize: const Size.fromHeight(42),
-            foregroundColor: const Color(0xFFA53E36),
-          ),
+        const SizedBox(height: 4),
+        Text(
+          _s.vipAutoRefreshHint,
+          textAlign: TextAlign.center,
+          style: const TextStyle(color: _muted, fontSize: 11),
         ),
+        if (method?.mock ?? false) ...<Widget>[
+          const SizedBox(height: 10),
+          FilledButton.icon(
+            key: const Key('vip-mock-pay-success'),
+            onPressed: paying
+                ? null
+                : () => _controller.mockPay(VipMockPaymentOutcome.success),
+            icon: const Icon(Icons.check_circle_outline_rounded),
+            label: Text(_s.vipMockPaySuccess),
+            style: FilledButton.styleFrom(
+              minimumSize: const Size.fromHeight(42),
+              backgroundColor: _green,
+            ),
+          ),
+          const SizedBox(height: 8),
+          OutlinedButton.icon(
+            key: const Key('vip-mock-pay-fail'),
+            onPressed: paying
+                ? null
+                : () => _controller.mockPay(VipMockPaymentOutcome.fail),
+            icon: const Icon(Icons.error_outline_rounded),
+            label: Text(_s.vipMockPayFail),
+            style: OutlinedButton.styleFrom(
+              minimumSize: const Size.fromHeight(40),
+              foregroundColor: const Color(0xFFA53E36),
+            ),
+          ),
+        ],
         TextButton(
           key: const Key('vip-order-cancel'),
           onPressed: paying ? null : _controller.cancelOrder,
-          child: const Text('取消订单，重新选择套餐'),
+          child: Text(_s.vipCancelOrder),
         ),
       ],
     );
@@ -313,24 +541,24 @@ class _VipPurchaseDialogState extends State<VipPurchaseDialog> {
         const Icon(Icons.verified_rounded, size: 52, color: _green),
         const SizedBox(height: 10),
         Text(
-          '${order.planName} 已开通',
+          _s.vipPlanActivated(_s.vipPlanName(order.plan, order.planName)),
           textAlign: TextAlign.center,
           style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w800),
         ),
         const SizedBox(height: 6),
         Text(
           order.vipLifetime
-              ? '你已是永久 VIP，感谢支持！'
+              ? _s.vipLifetimeThanks
               : expiresAt == null
-              ? '权益已生效。'
-              : 'VIP 有效期至 ${_formatDate(expiresAt)}',
+              ? _s.vipEntitlementActive
+              : _s.vipPaidValidUntil(_formatDate(expiresAt)),
           key: const Key('vip-paid-summary'),
           textAlign: TextAlign.center,
           style: const TextStyle(color: _muted, fontSize: 12),
         ),
         const SizedBox(height: 4),
         Text(
-          '订单号 ${order.orderNo}',
+          '${_s.vipOrderNoLine(order.orderNo)} · ${order.price}',
           textAlign: TextAlign.center,
           style: const TextStyle(color: _muted, fontSize: 10),
         ),
@@ -342,7 +570,7 @@ class _VipPurchaseDialogState extends State<VipPurchaseDialog> {
             minimumSize: const Size.fromHeight(44),
             backgroundColor: _accent,
           ),
-          child: const Text('完成'),
+          child: Text(_s.done),
         ),
       ],
     );
@@ -364,7 +592,10 @@ class _PlanTile extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final hint = plan.monthlyLabel;
+    final s = AppStrings.of(context);
+    final duration = s.vipPlanDuration(plan.months, plan.lifetime);
+    final monthly = plan.monthlyPrice;
+    final regular = plan.regularPrice;
     return Material(
       color: selected ? const Color(0xFFFFF4EC) : Colors.white,
       shape: RoundedRectangleBorder(
@@ -394,22 +625,45 @@ class _PlanTile extends StatelessWidget {
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: <Widget>[
-                    Text(
-                      plan.name,
-                      style: const TextStyle(fontWeight: FontWeight.w700),
+                    Row(
+                      children: <Widget>[
+                        Flexible(
+                          child: Text(
+                            s.vipPlanName(plan.id, plan.name),
+                            style: const TextStyle(fontWeight: FontWeight.w700),
+                          ),
+                        ),
+                        if (plan.recommended) ...<Widget>[
+                          const SizedBox(width: 6),
+                          _PlanBadge(
+                            key: Key('vip-plan-${plan.id}-recommended'),
+                            label: s.vipRecommended,
+                          ),
+                        ],
+                        if (regular != null) ...<Widget>[
+                          const SizedBox(width: 6),
+                          _PlanBadge(label: s.vipEarlyBird),
+                        ],
+                      ],
                     ),
                     const SizedBox(height: 2),
                     Text(
-                      hint == null
-                          ? plan.durationLabel
-                          : '${plan.durationLabel} · $hint',
+                      monthly == null
+                          ? duration
+                          : '$duration · ${s.vipPerMonth(monthly)}',
                       style: const TextStyle(color: _muted, fontSize: 11),
                     ),
+                    if (regular != null)
+                      Text(
+                        s.vipRegularPrice(regular),
+                        key: Key('vip-plan-${plan.id}-regular'),
+                        style: const TextStyle(color: _muted, fontSize: 11),
+                      ),
                   ],
                 ),
               ),
               Text(
-                '¥${plan.amount}',
+                plan.price,
                 style: const TextStyle(
                   fontSize: 16,
                   fontWeight: FontWeight.w800,
@@ -417,6 +671,33 @@ class _PlanTile extends StatelessWidget {
                 ),
               ),
             ],
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+class _PlanBadge extends StatelessWidget {
+  const _PlanBadge({super.key, required this.label});
+
+  final String label;
+
+  @override
+  Widget build(BuildContext context) {
+    return DecoratedBox(
+      decoration: BoxDecoration(
+        color: _accent,
+        borderRadius: BorderRadius.circular(6),
+      ),
+      child: Padding(
+        padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 1),
+        child: Text(
+          label,
+          style: const TextStyle(
+            color: Colors.white,
+            fontSize: 10,
+            fontWeight: FontWeight.w700,
           ),
         ),
       ),
@@ -444,7 +725,7 @@ class _InfoRow extends StatelessWidget {
         crossAxisAlignment: CrossAxisAlignment.start,
         children: <Widget>[
           SizedBox(
-            width: 64,
+            width: 96,
             child: Text(
               label,
               style: const TextStyle(fontSize: 12, color: _muted),
@@ -454,6 +735,41 @@ class _InfoRow extends StatelessWidget {
             child: selectable
                 ? SelectableText(value, style: style)
                 : Text(value, style: style),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+/// 固定展示的“不支持退款”提示。
+class _NoRefundNotice extends StatelessWidget {
+  const _NoRefundNotice(this.message);
+
+  final String message;
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      key: const Key('vip-no-refund'),
+      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
+      decoration: BoxDecoration(
+        color: const Color(0xFFF7F3EC),
+        borderRadius: BorderRadius.circular(8),
+      ),
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: <Widget>[
+          const Padding(
+            padding: EdgeInsets.only(top: 1),
+            child: Icon(Icons.info_outline_rounded, size: 14, color: _muted),
+          ),
+          const SizedBox(width: 6),
+          Expanded(
+            child: Text(
+              message,
+              style: const TextStyle(fontSize: 11, color: _ink, height: 1.4),
+            ),
           ),
         ],
       ),

@@ -121,6 +121,12 @@ const _serverErrorsEn = <String, String>{
       'order.',
   'MOCK_PAYMENT_FAILED': 'The test payment failed; the order is still '
       'unpaid and you can retry.',
+  'INVALID_PAYMENT_METHOD': 'The selected payment method isn\'t available.',
+  'TERMS_NOT_ACCEPTED': 'Please read and agree to the VIP terms (purchases '
+      'are non-refundable). If you don\'t see that option, update JianHe '
+      'first.',
+  'PAYMENT_CURRENCY_MISMATCH': 'The payment currency doesn\'t match the '
+      'order.',
   // Feedback.
   'INVALID_FEEDBACK_CONTENT': 'Feedback must be 1–2000 characters.',
   'INVALID_FEEDBACK_STATUS': 'Invalid feedback status.',

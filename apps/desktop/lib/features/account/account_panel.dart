@@ -451,10 +451,10 @@ class _AccountPanelState extends State<AccountPanel> {
               ? null
               : _s.vipValidUntil(_formatDate(entitlement.vipExpiresAt!)),
         ),
-        // Purchase is offered in the Chinese interface only for now.
+        // Both purchase entries are offered in every interface language; the
+        // server decides prices per entry, never per language.
         if (controller.billing != null &&
-            !entitlement.vipLifetime &&
-            _s.language != AppLanguage.en) ...<Widget>[
+            !entitlement.vipLifetime) ...<Widget>[
           const SizedBox(height: 10),
           FilledButton.icon(
             key: const Key('vip-purchase'),

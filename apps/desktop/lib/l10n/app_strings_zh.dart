@@ -763,6 +763,115 @@ class ZhStrings extends AppStrings {
   @override
   String get planBadgeFree => '免费';
 
+  // Account: VIP purchase
+  @override
+  String get vipPurchaseTitle => '开通 VIP';
+  @override
+  String get vipRenewTitle => '续费 VIP';
+  @override
+  String get vipCashierTitle => '收银台';
+  @override
+  String get vipMockCashierTitle => '模拟收银台';
+  @override
+  String get vipPaidTitle => '支付成功';
+  @override
+  String vipRenewHint(String date) => '当前 VIP 有效期至 $date，续费时长将自动顺延。';
+  @override
+  String get vipBuyHint => '开通后素材和 Skill 会自动同步到你的其他设备。';
+  @override
+  String vipMarketName(String market) => switch (market) {
+    'cn' => '国内 · 人民币',
+    'intl' => '海外 · 美元',
+    _ => market,
+  };
+  @override
+  String vipPlanName(String planId, String fallback) => switch (planId) {
+    'month' => '月度 VIP',
+    'quarter' => '季度 VIP',
+    'year' => '年度 VIP',
+    'lifetime' => '永久 VIP',
+    _ => fallback,
+  };
+  @override
+  String vipPlanDuration(int months, bool lifetime) =>
+      lifetime
+      ? '一次购买，永久有效'
+      : months % 12 == 0
+      ? '${months ~/ 12} 年'
+      : '$months 个月';
+  @override
+  String vipPerMonth(String price) => '约 $price/月';
+  @override
+  String get vipRecommended => '推荐';
+  @override
+  String get vipEarlyBird => '早鸟价';
+  @override
+  String vipRegularPrice(String price) => '早鸟活动结束后恢复正式价 $price';
+  @override
+  String get vipPayMethod => '支付方式';
+  @override
+  String get vipNoRefundNotice => 'VIP 为虚拟服务，支付成功后立即生效，购买后不支持退款。';
+  @override
+  String get vipTermsAgreeBefore => '我已阅读并同意';
+  @override
+  String get vipTermsLink => '《服务条款》';
+  @override
+  String get vipTermsAgreeAfter => '中的 VIP 会员条款，知晓购买后不支持退款。';
+  @override
+  String get vipChoosePlan => '请选择套餐';
+  @override
+  String vipPayAmount(String price) => '去支付 $price';
+  @override
+  String get vipMockBanner => '测试支付 · 不会产生任何真实扣款';
+  @override
+  String get vipInfoProduct => '商品';
+  @override
+  String get vipInfoOrderNo => '订单号';
+  @override
+  String get vipInfoDeadline => '支付截止';
+  @override
+  String get vipScanToPay => '请用手机扫描二维码完成支付。';
+  @override
+  String get vipPayInBrowser => '已在浏览器中打开支付页面，支付完成后回到这里。';
+  @override
+  String get vipReopenPayPage => '重新打开支付页面';
+  @override
+  String get vipCheckPaid => '我已完成支付';
+  @override
+  String get vipAutoRefreshHint => '支付完成后会自动更新，也可以点“我已完成支付”。';
+  @override
+  String get vipNotPaidYet => '还没有收到这笔订单的付款，请完成支付后再试。';
+  @override
+  String get vipMockPaySuccess => '模拟支付成功';
+  @override
+  String get vipMockPayFail => '模拟支付失败';
+  @override
+  String get vipCancelOrder => '取消订单，重新选择套餐';
+  @override
+  String vipPlanActivated(String plan) => '$plan 已开通';
+  @override
+  String get vipLifetimeThanks => '你已是永久 VIP，感谢支持！';
+  @override
+  String get vipEntitlementActive => '权益已生效。';
+  @override
+  String vipPaidValidUntil(String date) => 'VIP 有效期至 $date';
+  @override
+  String vipOrderNoLine(String orderNo) => '订单号 $orderNo';
+  @override
+  String get vipReloadPlans => '重新加载';
+  @override
+  String get vipPaymentUnavailable => '支付通道暂未开放，请稍后再试。';
+  @override
+  String get vipUpdateRequired => '当前版本暂不支持该支付方式，请更新笺盒。';
+  @override
+  String get vipOrderCancelled => '订单已取消。';
+  @override
+  String get vipOrderClosed => '订单已关闭，请重新下单。';
+  @override
+  String get vipBadResponse => '云服务返回了无法识别的数据。';
+  @override
+  String get vipPaymentFailed => '支付处理失败，请重试。';
+
   // Account: sync card
   @override
   String get syncStatusNeedsVip => '开通 VIP 后，素材和 Skill 会自动同步到你的其他设备。';

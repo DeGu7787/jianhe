@@ -18,6 +18,7 @@ dependencies:
   flutter_secure_storage: ^11.0.0
   http: ^1.6.0
   crypto: ^3.0.7
+  qr_flutter: ^4.1.0
 
 dev_dependencies:
   flutter_test:
