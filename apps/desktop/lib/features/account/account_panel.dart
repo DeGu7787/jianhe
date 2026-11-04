@@ -673,12 +673,43 @@ class _AccountPanelState extends State<AccountPanel> {
                 size: 22,
               ),
               const SizedBox(width: 10),
-              Expanded(
+              Flexible(
                 child: Text(
                   _s.multiDeviceSync,
                   style: const TextStyle(fontWeight: FontWeight.w700),
                 ),
               ),
+              const SizedBox(width: 6),
+              Tooltip(
+                key: const Key('sync-help'),
+                message: _s.syncHelpTooltip(
+                  vip: isVip,
+                  readOnlyGrace: readOnlyGrace,
+                  autoSync: controller.autoSyncEnabled,
+                  scheduleLabel: controller.schedule.label,
+                ),
+                waitDuration: const Duration(milliseconds: 200),
+                showDuration: const Duration(seconds: 10),
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 12,
+                  vertical: 10,
+                ),
+                margin: const EdgeInsets.symmetric(horizontal: 16),
+                textStyle: const TextStyle(
+                  color: Colors.white,
+                  fontSize: 12,
+                  height: 1.5,
+                ),
+                child: const MouseRegion(
+                  cursor: SystemMouseCursors.help,
+                  child: Icon(
+                    Icons.help_outline_rounded,
+                    size: 16,
+                    color: Color(0xFF9A9188),
+                  ),
+                ),
+              ),
+              const Spacer(),
               if (busy)
                 const SizedBox.square(
                   dimension: 17,

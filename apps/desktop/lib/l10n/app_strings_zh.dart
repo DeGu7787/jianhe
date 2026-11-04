@@ -899,6 +899,26 @@ class ZhStrings extends AppStrings {
   @override
   String get multiDeviceSync => '多设备同步';
   @override
+  String syncHelpTooltip({
+    required bool vip,
+    required bool readOnlyGrace,
+    required bool autoSync,
+    required String scheduleLabel,
+  }) {
+    // "每天 09:00" ends in a digit; keep a space before the following text.
+    final gap = RegExp(r'\d$').hasMatch(scheduleLabel) ? ' ' : '';
+    final when = readOnlyGrace
+        ? '· VIP 已到期，续费后才能继续上传修改'
+        : !vip
+        ? '· 开通 VIP 后，可在多台设备间自动同步'
+        : autoSync
+        ? '· 修改后自动上传，并且$scheduleLabel$gap同步一次'
+        : '· 自动同步已关闭，需要时点“现在同步”';
+    return '$when\n'
+        '· 新增、修改、删除都会同步到你的其他设备\n'
+        '· 同一内容或 Skill 在多台设备都改过，以最后修改的为准';
+  }
+  @override
   String get syncBadgeRestoreOnly => '仅可恢复';
   @override
   String get syncBadgeVipOnly => 'VIP 专享';

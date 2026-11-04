@@ -1024,6 +1024,27 @@ class EnStrings extends AppStrings {
   @override
   String get multiDeviceSync => 'Sync across devices';
   @override
+  String syncHelpTooltip({
+    required bool vip,
+    required bool readOnlyGrace,
+    required bool autoSync,
+    required String scheduleLabel,
+  }) {
+    final schedule = scheduleLabel.isEmpty
+        ? scheduleLabel
+        : scheduleLabel[0].toLowerCase() + scheduleLabel.substring(1);
+    final when = readOnlyGrace
+        ? '· VIP has expired. Renew to keep uploading your edits'
+        : !vip
+        ? '· Get VIP to sync automatically across your devices'
+        : autoSync
+        ? '· Edits upload automatically, and everything syncs $schedule'
+        : '· Auto sync is off. Click "Sync now" whenever you need it';
+    return '$when\n'
+        '· New, edited and deleted entries reach all your devices\n'
+        '· Edited an entry or Skill on several devices? The latest edit wins';
+  }
+  @override
   String get syncBadgeRestoreOnly => 'Download only';
   @override
   String get syncBadgeVipOnly => 'VIP only';

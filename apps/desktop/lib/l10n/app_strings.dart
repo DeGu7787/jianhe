@@ -479,6 +479,12 @@ abstract class AppStrings {
   String get syncStatusAuto;
   String get syncStatusManual;
   String get multiDeviceSync;
+  String syncHelpTooltip({
+    required bool vip,
+    required bool readOnlyGrace,
+    required bool autoSync,
+    required String scheduleLabel,
+  });
   String get syncBadgeRestoreOnly;
   String get syncBadgeVipOnly;
   String get autoSync;
