@@ -1379,7 +1379,7 @@ class ZhStrings extends AppStrings {
   @override
   String get portalNeedCategory => '需要新分类？请在「分类管理」中新建。';
   @override
-  String get portalSaveToCloud => '保存到云端';
+  String get portalSaveToCloud => '保存在云端';
   @override
   String get portalManageSkillPackage => '管理 Skill 包';
   @override

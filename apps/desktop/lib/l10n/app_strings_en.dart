@@ -1584,7 +1584,7 @@ class EnStrings extends AppStrings {
   String get portalNeedCategory =>
       'Need a new category? Create it under Categories.';
   @override
-  String get portalSaveToCloud => 'Save to cloud';
+  String get portalSaveToCloud => 'Save in cloud';
   @override
   String get portalManageSkillPackage => 'Manage skill package';
   @override
