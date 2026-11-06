@@ -52,8 +52,8 @@ class VipPurchaseController extends ChangeNotifier {
   final VipBillingRemote _billing;
   final String? _preferredMarket;
 
-  /// 只提供 [_preferredMarket] 这一个入口（英文界面只卖美元）。
-  /// 服务端没有该入口时仍退回第一个可用入口，避免无处可买。
+  /// 只提供 [_preferredMarket] 这一个入口（购买弹窗按界面语言锁定）。
+  /// 服务端没有该入口时显示“支付通道暂未开放”，不会改用其他入口。
   final bool _lockMarket;
   final Duration? _pollInterval;
 
@@ -83,7 +83,7 @@ class VipPurchaseController extends ChangeNotifier {
 
   /// 可以切换到的另一个购买入口；只有一个入口或入口被锁定时为 null。
   VipMarket? get alternativeMarket {
-    if (_lockMarket && _catalog?.market(_preferredMarket) != null) return null;
+    if (_lockMarket) return null;
     for (final candidate in _catalog?.markets ?? const <VipMarket>[]) {
       if (candidate.id != _marketId) return candidate;
     }
@@ -130,6 +130,10 @@ class VipPurchaseController extends ChangeNotifier {
     if (!catalog.paymentAvailable || catalog.markets.isEmpty) {
       return _s.vipPaymentUnavailable;
     }
+    // 锁定的入口尚未开放：不改用其他入口。
+    if (_lockMarket && catalog.market(_preferredMarket) == null) {
+      return _s.vipPaymentUnavailable;
+    }
     final method = selectedMethod;
     if (catalog.termsVersion == null ||
         method == null ||
@@ -148,11 +152,15 @@ class VipPurchaseController extends ChangeNotifier {
     try {
       final catalog = await _billing.fetchVipPlans();
       _catalog = catalog;
-      final keep =
-          catalog.market(_marketId) ?? catalog.market(_preferredMarket);
-      _applyMarket(
-        keep ?? (catalog.markets.isEmpty ? null : catalog.markets.first),
-      );
+      if (_lockMarket) {
+        _applyMarket(catalog.market(_preferredMarket));
+      } else {
+        final keep =
+            catalog.market(_marketId) ?? catalog.market(_preferredMarket);
+        _applyMarket(
+          keep ?? (catalog.markets.isEmpty ? null : catalog.markets.first),
+        );
+      }
       _update(stage: VipPurchaseStage.choosingPlan);
     } on Object catch (error) {
       _update(
@@ -167,11 +175,7 @@ class VipPurchaseController extends ChangeNotifier {
     if (busy || _stage != VipPurchaseStage.choosingPlan) return;
     final next = _catalog?.market(marketId);
     if (next == null || next.id == _marketId) return;
-    if (_lockMarket &&
-        next.id != _preferredMarket &&
-        _catalog?.market(_preferredMarket) != null) {
-      return;
-    }
+    if (_lockMarket && next.id != _preferredMarket) return;
     _applyMarket(next);
     _update(clearMessage: true);
   }

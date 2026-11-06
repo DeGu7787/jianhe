@@ -825,6 +825,12 @@ class ZhStrings extends AppStrings {
   @override
   String get vipTermsAgreeAfter => '中的 VIP 会员条款，知晓购买后不支持退款。';
   @override
+  String vipSupportContact(String contacts) => '订单或退款问题请联系客服：$contacts';
+  @override
+  String vipSupportWeChat(String id) => '微信 $id';
+  @override
+  String vipSupportPhone(String number) => '电话 $number';
+  @override
   String get vipChoosePlan => '请选择套餐';
   @override
   String vipPayAmount(String price) => '去支付 $price';

@@ -441,6 +441,9 @@ abstract class AppStrings {
   String get vipTermsAgreeBefore;
   String get vipTermsLink;
   String get vipTermsAgreeAfter;
+  String vipSupportContact(String contacts);
+  String vipSupportWeChat(String id);
+  String vipSupportPhone(String number);
   String get vipChoosePlan;
   String vipPayAmount(String price);
   String get vipMockBanner;

@@ -936,6 +936,13 @@ class EnStrings extends AppStrings {
   String get vipTermsAgreeAfter =>
       ' (VIP section). I agree that VIP starts immediately, and I understand that I lose any right to withdraw and that purchases are non-refundable.';
   @override
+  String vipSupportContact(String contacts) =>
+      'Questions about an order or a refund? Contact us: $contacts';
+  @override
+  String vipSupportWeChat(String id) => 'WeChat $id';
+  @override
+  String vipSupportPhone(String number) => 'Phone $number';
+  @override
   String get vipChoosePlan => 'Choose a plan';
   @override
   String vipPayAmount(String price) => 'Pay $price';

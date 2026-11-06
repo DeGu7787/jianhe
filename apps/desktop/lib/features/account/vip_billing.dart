@@ -186,6 +186,35 @@ class VipMarket {
   final List<VipPayMethod> methods;
 }
 
+/// 服务端下发的客服联系方式，用于订单和退款问题；字段均可能为空。
+class VipSupportContact {
+  const VipSupportContact({this.email, this.wechat, this.phone});
+
+  /// 解析 `support` 字段；缺失或格式不对时返回 null，不影响购买。
+  static VipSupportContact? tryParse(Object? json) {
+    if (json is! Map) return null;
+    String? field(String key) {
+      final value = json[key];
+      if (value is! String) return null;
+      final trimmed = value.trim();
+      return trimmed.isEmpty ? null : trimmed;
+    }
+
+    final contact = VipSupportContact(
+      email: field('email'),
+      wechat: field('wechat'),
+      phone: field('phone'),
+    );
+    return contact.isEmpty ? null : contact;
+  }
+
+  final String? email;
+  final String? wechat;
+  final String? phone;
+
+  bool get isEmpty => email == null && wechat == null && phone == null;
+}
+
 class VipPlanCatalog {
   const VipPlanCatalog({
     required this.markets,
@@ -193,6 +222,7 @@ class VipPlanCatalog {
     this.termsVersion,
     this.termsUrl,
     this.earlyBirdEndsAt,
+    this.support,
   });
 
   factory VipPlanCatalog.fromJson(Map<String, Object?> json) {
@@ -215,6 +245,7 @@ class VipPlanCatalog {
         final String value => DateTime.tryParse(value),
         _ => null,
       },
+      support: VipSupportContact.tryParse(json['support']),
     );
   }
 
@@ -230,6 +261,9 @@ class VipPlanCatalog {
 
   /// 早鸟活动的结束时刻（不含）；没有早鸟活动或服务端较旧时为 null。
   final DateTime? earlyBirdEndsAt;
+
+  /// 客服联系方式；服务端未配置或较旧时为 null。
+  final VipSupportContact? support;
 
   VipMarket? market(String? id) {
     for (final market in markets) {

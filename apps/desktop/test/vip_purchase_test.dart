@@ -265,7 +265,7 @@ void main() {
     },
   );
 
-  test('the English interface only sells in USD', () async {
+  test('each interface only sells in its own entry', () async {
     final api = _FakeBillingAccountApi();
     final account = await _signedIn(api);
     final controller = _controller(
@@ -282,10 +282,66 @@ void main() {
     expect(controller.market?.id, 'intl');
     expect(controller.selectedPlan?.price, 'US\$29.99');
 
-    // The Chinese interface offers the other entry.
-    final chinese = _controller(account, api, preferredMarket: 'cn');
+    // The Chinese interface is locked to CNY the same way.
+    final chinese = _controller(
+      account,
+      api,
+      preferredMarket: 'cn',
+      lockMarket: true,
+    );
     await chinese.loadPlans();
-    expect(chinese.alternativeMarket?.id, 'intl');
+    expect(chinese.market?.id, 'cn');
+    expect(chinese.alternativeMarket, isNull);
+    chinese.selectMarket('intl');
+    expect(chinese.market?.id, 'cn');
+  });
+
+  test('a locked interface never falls back to the other entry', () async {
+    final api = _FakeBillingAccountApi(onlyMarket: 'intl');
+    final account = await _signedIn(api);
+    final controller = _controller(
+      account,
+      api,
+      preferredMarket: 'cn',
+      lockMarket: true,
+    );
+
+    await controller.loadPlans();
+    // The CNY entry is not open yet: say so instead of selling in USD.
+    expect(controller.market, isNull);
+    expect(controller.alternativeMarket, isNull);
+    controller.selectMarket('intl');
+    expect(controller.market, isNull);
+    expect(controller.checkoutUnavailableReason, contains('支付通道暂未开放'));
+    controller.setTermsAccepted(true);
+    expect(controller.canCheckout, isFalse);
+    await controller.checkout();
+    expect(api.created, isEmpty);
+  });
+
+  testWidgets('the Chinese interface waits for the CNY entry', (tester) async {
+    tester.view.physicalSize = const Size(450, 900);
+    tester.view.devicePixelRatio = 1;
+    addTearDown(tester.view.resetPhysicalSize);
+    addTearDown(tester.view.resetDevicePixelRatio);
+    final api = _FakeBillingAccountApi(onlyMarket: 'intl');
+    final account = await _signedIn(api);
+
+    await tester.pumpWidget(
+      MaterialApp(
+        home: Scaffold(
+          body: VipPurchaseDialog(
+            account: account,
+            billing: api,
+            pollInterval: null,
+          ),
+        ),
+      ),
+    );
+    await tester.pumpAndSettle();
+    expect(find.textContaining('US\$'), findsNothing);
+    expect(find.byKey(const Key('vip-market-switch')), findsNothing);
+    expect(find.textContaining('支付通道暂未开放'), findsWidgets);
   });
 
   test('controller keeps the order payable after a failed payment', () async {
@@ -420,9 +476,15 @@ void main() {
     expect(find.byKey(const Key('vip-plan-year-regular')), findsNothing);
     // One entry at a time; the other is a link, not a toggle.
     expect(find.text('US\$29.99'), findsNothing);
-    expect(find.text('不在中国大陆？使用海外支付（美元）'), findsOneWidget);
+    // The Chinese interface only sells in CNY: no way to switch to USD.
+    expect(find.text('不在中国大陆？使用海外支付（美元）'), findsNothing);
+    expect(find.byKey(const Key('vip-market-switch')), findsNothing);
     expect(find.byKey(const Key('vip-no-refund')), findsOneWidget);
     expect(find.textContaining('购买后不支持退款'), findsWidgets);
+    expect(
+      find.text('订单或退款问题请联系客服：微信 jianhe-help · help@jianhe.example.com'),
+      findsOneWidget,
+    );
 
     await tester.tap(find.byKey(const Key('vip-plan-year')));
     await tester.pump();
@@ -462,36 +524,38 @@ void main() {
     expect(api.created, <String>['year:mock_cn_qr:$_terms']);
   });
 
-  testWidgets('the Chinese interface can switch to the overseas entry', (
+  testWidgets('the English interface checks out in the browser', (
     tester,
   ) async {
     tester.view.physicalSize = const Size(450, 900);
     tester.view.devicePixelRatio = 1;
     addTearDown(tester.view.resetPhysicalSize);
     addTearDown(tester.view.resetDevicePixelRatio);
+    AppStrings.setCurrentLanguage(AppLanguage.en);
+    addTearDown(() => AppStrings.setCurrentLanguage(AppLanguage.zh));
     final api = _FakeBillingAccountApi();
     final opened = <Uri>[];
     final account = await _signedIn(api, opened: opened);
 
     await tester.pumpWidget(
-      MaterialApp(
-        home: Scaffold(
-          body: VipPurchaseDialog(
-            account: account,
-            billing: api,
-            pollInterval: null,
+      AppLanguageScope(
+        language: AppLanguage.en,
+        child: MaterialApp(
+          home: Scaffold(
+            body: VipPurchaseDialog(
+              account: account,
+              billing: api,
+              pollInterval: null,
+            ),
           ),
         ),
       ),
     );
     await tester.pumpAndSettle();
-    expect(find.text('¥68.00'), findsOneWidget);
-    await tester.tap(find.byKey(const Key('vip-market-switch')));
-    await tester.pumpAndSettle();
     expect(find.text('¥68.00'), findsNothing);
-    expect(find.text('在中国大陆？改用国内支付（人民币）'), findsOneWidget);
+    expect(find.byKey(const Key('vip-market-switch')), findsNothing);
     expect(find.text('US\$29.99'), findsOneWidget);
-    expect(find.text('年度 VIP'), findsOneWidget);
+    expect(find.text('Yearly VIP'), findsOneWidget);
     // One method in this entry: no method picker.
     expect(find.byKey(const Key('vip-method-mock_intl')), findsNothing);
 
@@ -567,6 +631,7 @@ void main() {
     expect(find.text('Monthly VIP'), findsOneWidget);
     expect(find.text('Best value'), findsOneWidget);
     expect(find.textContaining('non-refundable'), findsWidgets);
+    expect(find.byKey(const Key('vip-support')), findsOneWidget);
     expect(find.text('Pay US\$29.99'), findsOneWidget);
 
     // No CNY prices and no way to switch to them.
@@ -697,6 +762,10 @@ Map<String, Object?> _catalogJson({
     'payment_available': paymentAvailable,
     'terms_version': _terms,
     'terms_url': 'https://jianhe.example.com/terms#vip',
+    'support': <String, Object?>{
+      'email': 'help@jianhe.example.com',
+      'wechat': 'jianhe-help',
+    },
     'markets': paymentAvailable
         ? <Object?>[
             <String, Object?>{
@@ -809,9 +878,13 @@ class _FakeBillingAccountApi
     this.paymentAvailable = true,
     this.closeOrders = false,
     this.earlyBird = false,
+    this.onlyMarket,
   });
 
   final bool paymentAvailable;
+
+  /// When set, the server offers only this purchase entry.
+  final String? onlyMarket;
   final bool earlyBird;
   final bool closeOrders;
 
@@ -893,9 +966,19 @@ class _FakeBillingAccountApi
   }
 
   @override
-  Future<VipPlanCatalog> fetchVipPlans() async => VipPlanCatalog.fromJson(
-    _catalogJson(paymentAvailable: paymentAvailable, earlyBird: earlyBird),
-  );
+  Future<VipPlanCatalog> fetchVipPlans() async {
+    final json = _catalogJson(
+      paymentAvailable: paymentAvailable,
+      earlyBird: earlyBird,
+    );
+    if (onlyMarket case final id?) {
+      json['markets'] = <Object?>[
+        for (final market in json['markets']! as List<Object?>)
+          if ((market! as Map<String, Object?>)['id'] == id) market,
+      ];
+    }
+    return VipPlanCatalog.fromJson(json);
+  }
 
   @override
   Future<VipOrder> createVipOrder({

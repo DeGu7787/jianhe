@@ -41,14 +41,15 @@ class _VipPurchaseDialogState extends State<VipPurchaseDialog> {
   @override
   void initState() {
     super.initState();
-    // 英文界面只卖美元（海外入口）；中文界面默认人民币，
-    // 海外华人可以通过页面底部的链接改用美元。
+    // 购买入口跟随界面语言：中文界面只卖人民币，英文界面只卖美元。
+    // 两个入口的支付方式不同，不在同一界面里互相切换；
+    // 服务端还没开放对应入口时显示“支付通道暂未开放”，不改用另一个入口。
     final english = AppStrings.read(context).language == AppLanguage.en;
     _controller = VipPurchaseController(
       account: widget.account,
       billing: widget.billing,
       preferredMarket: english ? vipMarketIntl : vipMarketCN,
-      lockMarket: english,
+      lockMarket: true,
       pollInterval: widget.pollInterval,
     )..addListener(_refresh);
     _controller.loadPlans();
@@ -259,8 +260,27 @@ class _VipPurchaseDialogState extends State<VipPurchaseDialog> {
           ),
           const SizedBox(height: 10),
         ],
-        _NoRefundNotice(_s.vipNoRefundNotice),
+        _RefundNotice(_s.vipNoRefundNotice),
+        if (_supportLine(catalog.support) case final support?) ...<Widget>[
+          const SizedBox(height: 6),
+          support,
+        ],
       ],
+    );
+  }
+
+  /// 客服联系方式，由服务端下发；没有时不显示。
+  Widget? _supportLine(VipSupportContact? contact) {
+    if (contact == null || contact.isEmpty) return null;
+    final parts = <String>[
+      if (contact.wechat case final id?) _s.vipSupportWeChat(id),
+      if (contact.phone case final number?) _s.vipSupportPhone(number),
+      ?contact.email,
+    ];
+    return SelectableText(
+      _s.vipSupportContact(parts.join(' · ')),
+      key: const Key('vip-support'),
+      style: const TextStyle(fontSize: 11, color: _muted, height: 1.4),
     );
   }
 
@@ -515,7 +535,12 @@ class _VipPurchaseDialogState extends State<VipPurchaseDialog> {
           ),
         ),
         const SizedBox(height: 8),
-        _NoRefundNotice(_s.vipNoRefundNotice),
+        _RefundNotice(_s.vipNoRefundNotice),
+        if (_supportLine(_controller.catalog?.support)
+            case final support?) ...<Widget>[
+          const SizedBox(height: 6),
+          support,
+        ],
         if (_controller.message case final message?) ...<Widget>[
           const SizedBox(height: 10),
           _Notice(message),
@@ -912,9 +937,9 @@ class _InfoRow extends StatelessWidget {
   }
 }
 
-/// 固定展示的“不支持退款”提示。
-class _NoRefundNotice extends StatelessWidget {
-  const _NoRefundNotice(this.message);
+/// 固定展示的“不支持退款”提示（两个购买入口规则相同）。
+class _RefundNotice extends StatelessWidget {
+  const _RefundNotice(this.message);
 
   final String message;
 
