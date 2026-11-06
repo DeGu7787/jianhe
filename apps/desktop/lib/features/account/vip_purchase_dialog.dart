@@ -937,7 +937,7 @@ class _InfoRow extends StatelessWidget {
   }
 }
 
-/// 固定展示的“不支持退款”提示（两个购买入口规则相同）。
+/// 固定展示的退款规则提示：中文界面（人民币）不支持退款，英文界面（美元）14 天内可退款。
 class _RefundNotice extends StatelessWidget {
   const _RefundNotice(this.message);
 

@@ -927,14 +927,14 @@ class EnStrings extends AppStrings {
   String get vipPayMethod => 'Payment method';
   @override
   String get vipNoRefundNotice =>
-      'VIP is a digital service that starts as soon as payment succeeds. Purchases are non-refundable.';
+      'VIP is a digital service that starts as soon as payment succeeds. You can request a full refund within 14 days of purchase.';
   @override
   String get vipTermsAgreeBefore => 'I have read and agree to the ';
   @override
   String get vipTermsLink => 'Terms of Service';
   @override
   String get vipTermsAgreeAfter =>
-      ' (VIP section). I agree that VIP starts immediately, and I understand that I lose any right to withdraw and that purchases are non-refundable.';
+      ' (VIP section). I agree that VIP starts immediately after payment, and I understand that refunds can be requested within 14 days of purchase.';
   @override
   String vipSupportContact(String contacts) =>
       'Questions about an order or a refund? Contact us: $contacts';

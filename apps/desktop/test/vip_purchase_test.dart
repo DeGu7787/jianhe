@@ -630,7 +630,7 @@ void main() {
     expect(find.text('US\$4.99'), findsOneWidget);
     expect(find.text('Monthly VIP'), findsOneWidget);
     expect(find.text('Best value'), findsOneWidget);
-    expect(find.textContaining('non-refundable'), findsWidgets);
+    expect(find.textContaining('within 14 days'), findsWidgets);
     expect(find.byKey(const Key('vip-support')), findsOneWidget);
     expect(find.text('Pay US\$29.99'), findsOneWidget);
 

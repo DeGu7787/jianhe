@@ -122,9 +122,9 @@ const _serverErrorsEn = <String, String>{
   'MOCK_PAYMENT_FAILED': 'The test payment failed; the order is still '
       'unpaid and you can retry.',
   'INVALID_PAYMENT_METHOD': 'The selected payment method isn\'t available.',
-  'TERMS_NOT_ACCEPTED': 'Please read and agree to the VIP terms (purchases '
-      'are non-refundable). If you don\'t see that option, update JianHe '
-      'first.',
+  'TERMS_NOT_ACCEPTED': 'Please read and agree to the VIP terms (refunds '
+      'within 14 days of purchase). If you don\'t see that option, update '
+      'JianHe first.',
   'PAYMENT_CURRENCY_MISMATCH': 'The payment currency doesn\'t match the '
       'order.',
   // Feedback.
